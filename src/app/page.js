@@ -117,34 +117,36 @@ export default function HomePage() {
           onClick={() => setActiveTab("home")}
           className="flex items-center gap-2.5 cursor-pointer select-none group"
         >
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center shadow-xs transition-transform duration-200 group-hover:scale-105"
-            style={{
-              background: "linear-gradient(135deg, #0284C7, #0369A1)",
-            }}
-          >
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-md shadow-sky-600/20 transition-all duration-200 group-hover:scale-105 bg-gradient-to-br from-sky-500 via-sky-600 to-indigo-700 p-2">
             <svg
-              className="w-5 h-5 text-white"
+              className="w-full h-full text-white"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.5"
+              strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-              <path d="M12 7v6" strokeWidth="2.5" />
-              <path d="M9 10h6" strokeWidth="2.5" />
+              {/* Shield Outline */}
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeWidth="1.75" />
+              {/* Biometric DNA Wave Curves */}
+              <path d="M9 7.5c1.5 1.5 4.5 1.5 6 0" strokeWidth="2" stroke="white" />
+              <path d="M15 12c-1.5 1.5-4.5 1.5-6 0" strokeWidth="2" stroke="white" />
+              <path d="M9 16.5c1.5 1.5 4.5 1.5 6 0" strokeWidth="2" stroke="white" />
+              {/* Center Core Dot */}
+              <circle cx="12" cy="12" r="1.25" fill="white" />
             </svg>
           </div>
           <div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-sm tracking-tight block leading-tight text-slate-900">
                 Sanomed
               </span>
               <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
             </div>
-            <span className="text-[10px] text-slate-400 font-medium block">Medical Health Hub</span>
+            <span className="text-[10px] text-slate-400 font-semibold block tracking-wide">
+              Medical Health Hub
+            </span>
           </div>
         </div>
 
