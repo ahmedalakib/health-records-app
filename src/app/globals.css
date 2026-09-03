@@ -1,72 +1,105 @@
 @import "tailwindcss";
 
 :root {
-  --color-primary: #0F6E56;
-  --color-primary-light: #E1F5EE;
-  --color-primary-dark: #085041;
-  --color-bg: #F5FAF8;
-  --color-text: #1A2E28;
-  --color-text-muted: #5C7A70;
-  --color-border: #CDE7DC;
+  /* Default: Calm Medical Slate & Deep Azure Theme */
+  --color-primary: #0284C7;
+  --color-primary-light: #E0F2FE;
+  --color-primary-dark: #0369A1;
+  --color-accent: #0EA5E9;
+  --color-bg: #F8FAFC;
+  --color-card-bg: #FFFFFF;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-border: #E2E8F0;
+  --color-border-subtle: #F1F5F9;
 }
 
-[data-theme="blue"] {
-  --color-primary: #185FA5;
-  --color-primary-light: #E6F1FB;
-  --color-primary-dark: #0C447C;
-  --color-bg: #F7FAFC;
-  --color-text: #1A2733;
-  --color-text-muted: #5B7083;
-  --color-border: #D5E3F0;
+[data-theme="emerald"] {
+  --color-primary: #059669;
+  --color-primary-light: #D1FAE5;
+  --color-primary-dark: #047857;
+  --color-accent: #10B981;
+  --color-bg: #F0FDF4;
+  --color-card-bg: #FFFFFF;
+  --color-text: #064E3B;
+  --color-text-muted: #4B7A6A;
+  --color-border: #A7F3D0;
+  --color-border-subtle: #E6FBF2;
 }
 
-[data-theme="coral"] {
-  --color-primary: #993C1D;
-  --color-primary-light: #FAECE7;
-  --color-primary-dark: #712B13;
-  --color-bg: #FDF8F6;
-  --color-text: #2C1D14;
-  --color-text-muted: #7A5F4F;
-  --color-border: #F0D8CC;
+[data-theme="indigo"] {
+  --color-primary: #4F46E5;
+  --color-primary-light: #EEF2FF;
+  --color-primary-dark: #3730A3;
+  --color-accent: #6366F1;
+  --color-bg: #F8FAFC;
+  --color-text: #1E1B4B;
+  --color-text-muted: #6B7280;
+  --color-border: #E0E7FF;
+  --color-border-subtle: #F5F7FF;
 }
 
 [data-theme="purple"] {
-  --color-primary: #534AB7;
-  --color-primary-light: #EEEDFE;
-  --color-primary-dark: #3C3489;
-  --color-bg: #F8F8FD;
-  --color-text: #201D3A;
-  --color-text-muted: #6B6690;
-  --color-border: #DEDCF6;
+  --color-primary: #7C3AED;
+  --color-primary-light: #F3E8FF;
+  --color-primary-dark: #5B21B6;
+  --color-accent: #8B5CF6;
+  --color-bg: #FAF5FF;
+  --color-text: #3B0764;
+  --color-text-muted: #7E22CE;
+  --color-border: #E9D5FF;
+  --color-border-subtle: #F5EEFF;
 }
 
+/* Hardware-accelerated smooth rendering */
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-@keyframes float-gentle {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-3px); }
+/* Zero-lag GPU accelerated smooth transitions */
+.smooth-card {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
+  will-change: transform;
 }
 
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.75; transform: scale(1.05); }
+.smooth-card:hover {
+  transform: translateY(-1.5px);
 }
 
-.animate-float {
-  animation: float-gentle 4s ease-in-out infinite;
+.smooth-card:active {
+  transform: translateY(0.5px) scale(0.995);
 }
 
-.animate-pulse-subtle {
-  animation: pulse-subtle 2.5s ease-in-out infinite;
-}
-
+/* Glass surface with crisp fallback for maximum performance */
 .glass-surface {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-surface-subtle {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Modern clean scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
 }

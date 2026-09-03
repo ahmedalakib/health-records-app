@@ -25,10 +25,10 @@ import EmergencyModal from "./components/EmergencyModal";
 import DoctorSummaryPrint from "./components/DoctorSummaryPrint";
 
 const THEMES = [
-  { id: "teal", label: "Teal", color: "#0F6E56" },
-  { id: "blue", label: "Blue", color: "#185FA5" },
-  { id: "coral", label: "Coral", color: "#993C1D" },
-  { id: "purple", label: "Purple", color: "#534AB7" },
+  { id: "azure", label: "Azure", color: "#0284C7" },
+  { id: "emerald", label: "Emerald", color: "#059669" },
+  { id: "indigo", label: "Indigo", color: "#4F46E5" },
+  { id: "purple", label: "Purple", color: "#7C3AED" },
 ];
 
 export default function Profile({

@@ -115,21 +115,36 @@ export default function HomePage() {
       >
         <div
           onClick={() => setActiveTab("home")}
-          className="flex items-center gap-2.5 cursor-pointer select-none"
+          className="flex items-center gap-2.5 cursor-pointer select-none group"
         >
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center shadow-xs"
+            className="w-9 h-9 rounded-xl flex items-center justify-center shadow-xs transition-transform duration-200 group-hover:scale-105"
             style={{
-              background: "linear-gradient(135deg, var(--color-primary), var(--color-primary-dark))",
+              background: "linear-gradient(135deg, #0284C7, #0369A1)",
             }}
           >
-            <HeartPulse size={18} color="white" />
+            <svg
+              className="w-5 h-5 text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+              <path d="M12 7v6" strokeWidth="2.5" />
+              <path d="M9 10h6" strokeWidth="2.5" />
+            </svg>
           </div>
           <div>
-            <span className="font-bold text-sm tracking-tight block leading-tight" style={{ color: "var(--color-text)" }}>
-              HealthKeep
-            </span>
-            <span className="text-[10px] text-gray-400 font-medium block">Personal Health Hub</span>
+            <div className="flex items-center gap-1">
+              <span className="font-extrabold text-sm tracking-tight block leading-tight text-slate-900">
+                Sanomed
+              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+            </div>
+            <span className="text-[10px] text-slate-400 font-medium block">Medical Health Hub</span>
           </div>
         </div>
 
