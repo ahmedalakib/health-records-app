@@ -14,9 +14,24 @@ import {
   AlertTriangle,
   Info,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  Bell,
+  BellOff,
+  BellRing
 } from "lucide-react";
 import { checkDrugAllergy, getMedicationTips } from "./lib/drugSafety";
+
+// Convert base64 url-safe string to Uint8Array for PushManager
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 export default function Medications({ userId }) {
   const [medications, setMedications] = useState([]);
@@ -26,7 +41,15 @@ export default function Medications({ userId }) {
   const [name, setName] = useState("");
   const [dosage, setDosage] = useState("");
   const [frequency, setFrequency] = useState("");
+  const [reminderTimes, setReminderTimes] = useState([]);
+  const [customTimeInput, setCustomTimeInput] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Push notification state
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [testPushStatus, setTestPushStatus] = useState("");
 
   // Refill tracking stored in localStorage
   const [refills, setRefills] = useState({});
@@ -40,7 +63,118 @@ export default function Medications({ userId }) {
     loadMedications();
     loadRefills();
     loadProfileAllergies();
+    checkPushSubscription();
   }, [userId]);
+
+  // Check push support and current subscription status
+  async function checkPushSubscription() {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setPushSupported(false);
+      return;
+    }
+    setPushSupported(true);
+
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      const existingSubscription = await registration.pushManager.getSubscription();
+      setPushSubscribed(!!existingSubscription);
+    } catch (err) {
+      console.warn("Service worker registration check error:", err);
+    }
+  }
+
+  // Request push permission and subscribe
+  async function togglePushSubscription() {
+    if (!pushSupported) {
+      alert("Push notifications are not supported on this browser.");
+      return;
+    }
+
+    setPushLoading(true);
+    try {
+      const registration = await navigator.serviceWorker.ready;
+
+      if (pushSubscribed) {
+        // Unsubscribe
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await subscription.unsubscribe();
+          setPushSubscribed(false);
+        }
+      } else {
+        // Subscribe
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          alert("Notification permission was denied. Please allow notifications in your browser settings.");
+          setPushLoading(false);
+          return;
+        }
+
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidPublicKey) {
+          alert("VAPID public key not configured in environment.");
+          setPushLoading(false);
+          return;
+        }
+
+        const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+        const newSubscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedVapidKey,
+        });
+
+        // Save subscription in localStorage for this user
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`healthkeep_push_sub_${userId}`, JSON.stringify(newSubscription));
+        }
+
+        setPushSubscribed(true);
+      }
+    } catch (err) {
+      console.error("Failed to subscribe/unsubscribe to push:", err);
+      alert("Error configuring notifications: " + (err.message || err));
+    } finally {
+      setPushLoading(false);
+    }
+  }
+
+  // Send a test reminder notification
+  async function sendTestPush() {
+    setTestPushStatus("sending");
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        alert("Please enable push notifications first!");
+        setTestPushStatus("");
+        return;
+      }
+
+      const res = await fetch("/api/send-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscription,
+          title: "💊 Medication Reminder Test",
+          body: "Great! Your medication notifications are fully working on this device.",
+          url: "/",
+        }),
+      });
+
+      if (res.ok) {
+        setTestPushStatus("sent");
+        setTimeout(() => setTestPushStatus(""), 4000);
+      } else {
+        const data = await res.json();
+        alert("Failed to send: " + (data.error || "Unknown error"));
+        setTestPushStatus("");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Test failed: " + err.message);
+      setTestPushStatus("");
+    }
+  }
 
   async function loadProfileAllergies() {
     if (!userId) return;
@@ -97,19 +231,40 @@ export default function Medications({ userId }) {
     e.preventDefault();
     setSaving(true);
 
+    const reminderTimesString = reminderTimes.length > 0 ? reminderTimes.sort().join(",") : null;
+
     await supabase.from("medications").insert({
       user_id: userId,
       name,
       dosage,
       frequency,
+      reminder_times: reminderTimesString,
     });
 
     setName("");
     setDosage("");
     setFrequency("");
+    setReminderTimes([]);
+    setCustomTimeInput("");
     setSaving(false);
     setAdding(false);
     loadMedications();
+  }
+
+  function toggleReminderTime(timeStr) {
+    if (reminderTimes.includes(timeStr)) {
+      setReminderTimes(reminderTimes.filter((t) => t !== timeStr));
+    } else {
+      setReminderTimes([...reminderTimes, timeStr].sort());
+    }
+  }
+
+  function addCustomTime() {
+    if (!customTimeInput) return;
+    if (!reminderTimes.includes(customTimeInput)) {
+      setReminderTimes([...reminderTimes, customTimeInput].sort());
+    }
+    setCustomTimeInput("");
   }
 
   async function handleDelete(id) {
@@ -154,6 +309,74 @@ export default function Medications({ userId }) {
             <Plus size={16} /> Add Medication
           </button>
         )}
+      </div>
+
+      {/* Push Notification Banner */}
+      <div
+        className="rounded-3xl p-5 border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all"
+        style={{
+          backgroundColor: pushSubscribed ? "#F0FDF4" : "#F8FAFC",
+          borderColor: pushSubscribed ? "#BBF7D0" : "var(--color-border)",
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+            style={{
+              backgroundColor: pushSubscribed ? "#DCFCE7" : "#EDF2F7",
+              color: pushSubscribed ? "#16A34A" : "#64748B",
+            }}
+          >
+            {pushSubscribed ? <BellRing size={20} /> : <Bell size={20} />}
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+              Medication Push Reminders
+              {pushSubscribed && (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  Active
+                </span>
+              )}
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5 max-w-md">
+              {pushSubscribed
+                ? "Your browser is set up to receive alerts at your scheduled reminder times."
+                : "Receive alerts directly on this device so you never miss a dose."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {pushSubscribed && (
+            <button
+              onClick={sendTestPush}
+              disabled={testPushStatus === "sending"}
+              className="text-xs font-semibold px-3 py-2 rounded-xl border bg-white hover:bg-slate-50 transition-colors shadow-2xs"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+            >
+              {testPushStatus === "sending"
+                ? "Sending..."
+                : testPushStatus === "sent"
+                ? "✓ Alert Sent!"
+                : "Send Test Alert"}
+            </button>
+          )}
+
+          <button
+            onClick={togglePushSubscription}
+            disabled={pushLoading}
+            className="text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-xs active:scale-95 text-white"
+            style={{
+              backgroundColor: pushSubscribed ? "#EF4444" : "var(--color-primary)",
+            }}
+          >
+            {pushLoading
+              ? "Updating..."
+              : pushSubscribed
+              ? "Disable on this Device"
+              : "Enable Reminders"}
+          </button>
+        </div>
       </div>
 
       {/* Add Medication Form */}
@@ -244,6 +467,86 @@ export default function Medications({ userId }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Reminder Times Section */}
+          <div className="pt-2 border-t" style={{ borderColor: "var(--color-border)" }}>
+            <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1.5 flex items-center gap-1">
+              <Clock size={12} /> Scheduled Reminder Times
+            </label>
+            
+            {/* Quick time presets */}
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {[
+                { label: "Morning (08:00)", time: "08:00" },
+                { label: "Noon (12:00)", time: "12:00" },
+                { label: "Evening (18:00)", time: "18:00" },
+                { label: "Night (21:00)", time: "21:00" },
+              ].map((slot) => {
+                const isSelected = reminderTimes.includes(slot.time);
+                return (
+                  <button
+                    key={slot.time}
+                    type="button"
+                    onClick={() => toggleReminderTime(slot.time)}
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors flex items-center gap-1"
+                    style={{
+                      borderColor: isSelected ? "var(--color-primary)" : "var(--color-border)",
+                      backgroundColor: isSelected ? "var(--color-primary-light)" : "white",
+                      color: isSelected ? "var(--color-primary-dark)" : "var(--color-text-muted)",
+                    }}
+                  >
+                    {isSelected && <Check size={12} />}
+                    {slot.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom time picker */}
+            <div className="flex items-center gap-2">
+              <input
+                type="time"
+                value={customTimeInput}
+                onChange={(e) => setCustomTimeInput(e.target.value)}
+                className="border rounded-xl px-2.5 py-1 text-xs bg-white"
+                style={{ borderColor: "var(--color-border)" }}
+              />
+              <button
+                type="button"
+                onClick={addCustomTime}
+                disabled={!customTimeInput}
+                className="px-3 py-1 rounded-xl text-xs font-semibold border hover:bg-slate-50 transition-colors"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+              >
+                + Add Time
+              </button>
+            </div>
+
+            {/* Selected times display */}
+            {reminderTimes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {reminderTimes.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold"
+                    style={{
+                      backgroundColor: "var(--color-primary-light)",
+                      color: "var(--color-primary-dark)",
+                    }}
+                  >
+                    ⏰ {t}
+                    <button
+                      type="button"
+                      onClick={() => toggleReminderTime(t)}
+                      className="hover:opacity-75 ml-0.5 text-xs font-black"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-1">
@@ -340,10 +643,25 @@ export default function Medications({ userId }) {
                     ) : null}
                   </div>
 
-                  <p className="text-xs mt-1 text-gray-600 flex items-center gap-1.5">
-                    <Clock size={12} className="text-gray-400" />
-                    <span>{med.frequency || "Schedule as directed"}</span>
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                      <Clock size={12} className="text-gray-400" />
+                      <span>{med.frequency || "Schedule as directed"}</span>
+                    </p>
+
+                    {med.reminder_times && (
+                      <div className="flex flex-wrap items-center gap-1">
+                        {med.reminder_times.split(",").map((time) => (
+                          <span
+                            key={time}
+                            className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200"
+                          >
+                            🔔 {time}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Clinical Tip if applicable */}
                   {administrationTip && (
