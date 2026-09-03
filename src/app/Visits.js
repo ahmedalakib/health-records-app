@@ -14,7 +14,9 @@ import {
   CheckSquare,
   Square,
   ArrowRight,
-  FileCheck
+  FileCheck,
+  Phone,
+  PhoneCall
 } from "lucide-react";
 
 export default function Visits({ userId }) {
@@ -35,6 +37,7 @@ export default function Visits({ userId }) {
   const [docName, setDocName] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [clinic, setClinic] = useState("");
+  const [phone, setPhone] = useState("");
   const [apptDate, setApptDate] = useState("");
   const [apptTime, setApptTime] = useState("");
   const [apptReason, setApptReason] = useState("");
@@ -101,6 +104,7 @@ export default function Visits({ userId }) {
       doctor_name: docName.trim(),
       specialty: specialty.trim(),
       clinic: clinic.trim(),
+      phone: phone.trim(),
       date: apptDate,
       time: apptTime || "Morning",
       reason: apptReason.trim(),
@@ -118,6 +122,7 @@ export default function Visits({ userId }) {
     setDocName("");
     setSpecialty("");
     setClinic("");
+    setPhone("");
     setApptDate("");
     setApptTime("");
     setApptReason("");
@@ -327,7 +332,7 @@ export default function Visits({ userId }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">Date</label>
                   <input
@@ -350,13 +355,29 @@ export default function Visits({ userId }) {
                     style={{ borderColor: "var(--color-border)" }}
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">Clinic / Room</label>
+                  <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">Clinic / Hospital</label>
                   <input
                     type="text"
                     placeholder="e.g. City Hospital, 3rd Fl"
                     value={clinic}
                     onChange={(e) => setClinic(e.target.value)}
+                    className="w-full border rounded-xl px-2.5 py-2 text-xs bg-white"
+                    style={{ borderColor: "var(--color-border)" }}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">
+                    📞 Doctor / Clinic Phone
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +1 (555) 234-5678"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     className="w-full border rounded-xl px-2.5 py-2 text-xs bg-white"
                     style={{ borderColor: "var(--color-border)" }}
                   />
@@ -500,6 +521,17 @@ export default function Visits({ userId }) {
                       <MapPin size={13} className="text-gray-400" />
                       <span>{appt.clinic}</span>
                     </span>
+                  )}
+                  {appt.phone && (
+                    <a
+                      href={`tel:${appt.phone}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-bold transition-all shadow-2xs active:scale-95 text-white"
+                      style={{ backgroundColor: "#0284C7", borderColor: "#0369A1" }}
+                      title={`Call ${appt.doctor_name}`}
+                    >
+                      <PhoneCall size={12} className="animate-pulse" />
+                      <span>Call Doctor: {appt.phone}</span>
+                    </a>
                   )}
                 </div>
 

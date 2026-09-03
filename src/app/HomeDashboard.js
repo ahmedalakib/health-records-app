@@ -19,7 +19,9 @@ import {
   Search,
   AlertTriangle,
   Calendar,
-  HelpCircle
+  HelpCircle,
+  Phone,
+  PhoneCall
 } from "lucide-react";
 import DailyMedTracker from "./components/DailyMedTracker";
 import { evaluateVital } from "./lib/healthStandards";
@@ -201,8 +203,7 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
       {/* 4. Upcoming Doctor Appointment Countdown Widget */}
       {nextAppointment && (
         <div
-          onClick={() => onNavigate("visits")}
-          className="bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200 rounded-3xl p-4.5 cursor-pointer hover:shadow-xs transition-all group"
+          className="bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200 rounded-3xl p-4.5 hover:shadow-xs transition-all group"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700 bg-blue-100/90 border border-blue-200 px-2.5 py-0.5 rounded-full">
@@ -213,8 +214,8 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div onClick={() => onNavigate("visits")} className="cursor-pointer flex-1">
               <h3 className="text-sm font-bold text-gray-900 group-hover:text-blue-800 transition-colors">
                 {nextAppointment.doctor_name}
               </h3>
@@ -223,8 +224,21 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
               </p>
             </div>
 
-            <div className="text-right shrink-0">
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-white border border-blue-200 px-2.5 py-1.5 rounded-xl shadow-xs">
+            <div className="flex items-center gap-2 shrink-0">
+              {nextAppointment.phone && (
+                <a
+                  href={`tel:${nextAppointment.phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 px-3 py-1.5 rounded-xl shadow-xs transition-all active:scale-95"
+                >
+                  <PhoneCall size={12} className="animate-pulse" />
+                  <span>Call {nextAppointment.phone}</span>
+                </a>
+              )}
+              <span
+                onClick={() => onNavigate("visits")}
+                className="cursor-pointer inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-white border border-blue-200 px-2.5 py-1.5 rounded-xl shadow-xs"
+              >
                 <HelpCircle size={12} />
                 <span>{nextAppointment.questions?.length || 0} questions prep →</span>
               </span>
