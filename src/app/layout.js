@@ -14,6 +14,20 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Sanomed — Medical Health Hub",
   description: "Your secure, clinical-grade personal medical records and wellness platform",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Sanomed",
+  },
+};
+
+export const viewport = {
+  themeColor: "#0284C7",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({ children }) {
