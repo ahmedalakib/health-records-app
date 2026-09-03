@@ -2,16 +2,31 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabaseClient";
-import { Activity, Plus, Trash2, Heart, Scale, Droplet, Thermometer } from "lucide-react";
+import {
+  Activity,
+  Plus,
+  Trash2,
+  Heart,
+  Scale,
+  Droplet,
+  Thermometer,
+  Pin,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowUpRight,
+  TrendingUp,
+  LayoutGrid,
+  ListFilter
+} from "lucide-react";
 import VitalsChart from "./components/VitalsChart";
 import { evaluateVital } from "./lib/healthStandards";
 
-const VITAL_TYPES = [
-  { id: "Blood Pressure", label: "BP", icon: Activity, placeholder: "e.g. 120/80" },
-  { id: "Glucose", label: "Glucose", icon: Droplet, placeholder: "e.g. 95 mg/dL" },
-  { id: "Heart Rate", label: "Pulse", icon: Heart, placeholder: "e.g. 72 bpm" },
-  { id: "Weight", label: "Weight", icon: Scale, placeholder: "e.g. 70 kg or 155 lbs" },
-  { id: "Temperature", label: "Temp", icon: Thermometer, placeholder: "e.g. 98.6 F" },
+const VITAL_CONFIGS = [
+  { id: "Blood Pressure", label: "Blood Pressure", shortLabel: "BP", icon: Activity, unit: "mmHg", target: "120/80", placeholder: "e.g. 120/80" },
+  { id: "Glucose", label: "Blood Glucose", shortLabel: "Glucose", icon: Droplet, unit: "mmol/L or mg/dL", target: "4.0 - 7.0", placeholder: "e.g. 5.4 or 95" },
+  { id: "Heart Rate", label: "Heart Rate", shortLabel: "Pulse", icon: Heart, unit: "bpm", target: "60 - 100", placeholder: "e.g. 72" },
+  { id: "Temperature", label: "Body Temperature", shortLabel: "Temp", icon: Thermometer, unit: "°F", target: "97.8 - 99.1", placeholder: "e.g. 98.6" },
+  { id: "Weight", label: "Body Weight", shortLabel: "Weight", icon: Scale, unit: "kg / lbs", target: "Stable", placeholder: "e.g. 70" },
 ];
 
 export default function Vitals({ userId }) {
@@ -19,7 +34,7 @@ export default function Vitals({ userId }) {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [selectedChartVital, setSelectedChartVital] = useState("Blood Pressure");
-  const [historyFilter, setHistoryFilter] = useState("All");
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState("All"); // "All", "Clinical", "Devices"
 
   const [type, setType] = useState("Blood Pressure");
   const [value, setValue] = useState("");
@@ -65,69 +80,160 @@ export default function Vitals({ userId }) {
     loadVitals();
   }
 
-  const activeVitalConfig = VITAL_TYPES.find((v) => v.id === type) || VITAL_TYPES[0];
+  // Get most recent reading for each vital type
+  const latestByType = VITAL_CONFIGS.map((cfg) => {
+    const readings = vitals.filter((v) => {
+      const vType = (v.type || "").toLowerCase();
+      if (cfg.id === "Blood Pressure") return vType.includes("pressure") || vType === "bp";
+      return vType.includes(cfg.id.toLowerCase());
+    });
 
-  const filteredHistory = vitals.filter((v) => {
-    if (historyFilter === "All") return true;
-    const isBP = historyFilter === "Blood Pressure";
-    const vType = (v.type || "").toLowerCase();
-    if (isBP) return vType.includes("pressure") || vType === "bp";
-    return vType.includes(historyFilter.toLowerCase());
+    const latest = readings.length > 0 ? readings[0] : null;
+    const evaluation = latest ? evaluateVital(latest.type, latest.value) : null;
+
+    return {
+      ...cfg,
+      latestReading: latest,
+      evaluation,
+      count: readings.length,
+    };
   });
 
   return (
     <section className="mt-6 space-y-5">
-      {/* Header */}
-      <div className="flex justify-between items-center bg-white rounded-2xl p-4 border" style={{ borderColor: "var(--color-border)" }}>
-        <div className="flex items-center gap-2">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: "var(--color-primary-light)" }}
-          >
-            <Activity size={20} color="var(--color-primary)" />
+      {/* Header & Category Tabs (All | Clinical | Devices) */}
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shadow-xs">
+              <Activity size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                Vitals & Biometrics
+              </h2>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Last updated {vitals[0]?.recorded_at || "recently"} • {vitals.length} logs
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
-              Vitals & Health Metrics
-            </h2>
-            <p className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>
-              {vitals.length} total readings recorded
-            </p>
+
+          <div className="flex items-center gap-2">
+            {!adding && (
+              <button
+                onClick={() => setAdding(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+              >
+                <Plus size={15} />
+                <span>Log Vital</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {!adding && (
-          <button
-            onClick={() => setAdding(true)}
-            className="text-xs font-semibold flex items-center gap-1 px-3 py-2 rounded-xl transition-all"
-            style={{ color: "white", backgroundColor: "var(--color-primary)" }}
-          >
-            <Plus size={16} /> Log Reading
-          </button>
-        )}
+        {/* Filter Pills (All, Clinical, Devices) */}
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-1">
+          {["All", "Clinical", "Devices"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveCategoryFilter(tab)}
+              className="px-3 py-1.5 text-xs font-bold transition-all relative"
+              style={{
+                color: activeCategoryFilter === tab ? "#0284C7" : "#64748B",
+              }}
+            >
+              {tab}
+              {activeCategoryFilter === tab && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-600 rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 2-Column Pinned Vitals Cards Grid (Matching the uploaded reference mockup) */}
+      <div>
+        <div className="flex items-center justify-between mb-2.5 px-1">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+            <Pin size={12} className="rotate-45" /> Pinned Vitals
+          </span>
+          <span className="text-[11px] text-slate-400 font-medium">Tap to view curve</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {latestByType.slice(0, 4).map((item) => {
+            const Icon = item.icon;
+            const isSelected = selectedChartVital === item.id;
+            const evalStatus = item.evaluation?.status;
+            const isAbnormal = evalStatus === "High" || evalStatus === "Stage 1 HTN" || evalStatus === "Stage 2 HTN" || evalStatus === "Elevated";
+
+            return (
+              <div
+                key={item.id}
+                onClick={() => setSelectedChartVital(item.id)}
+                className={`bg-white rounded-3xl p-4 border transition-all cursor-pointer relative smooth-card ${
+                  isSelected
+                    ? "ring-2 ring-sky-500 border-sky-400 shadow-md shadow-sky-500/10"
+                    : "border-slate-200 hover:border-slate-300 shadow-xs"
+                }`}
+              >
+                {/* Pin and Drag Icon */}
+                <div className="flex items-start justify-between mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-700">
+                    <Icon size={16} className={isSelected ? "text-sky-600" : "text-slate-600"} />
+                  </div>
+                  <Pin size={12} className="text-slate-300" />
+                </div>
+
+                <p className="text-xs font-bold text-slate-700">{item.label}</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                    {item.latestReading ? item.latestReading.value : "--"}
+                  </span>
+                </div>
+
+                {/* Range Tag */}
+                <div className="mt-2.5">
+                  {item.latestReading ? (
+                    isAbnormal ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                        ! {evalStatus || "Out of range"}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        ✓ In range
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-medium">No record yet</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Add Reading Modal / Form */}
       {adding && (
-        <div className="bg-white rounded-2xl p-5 border shadow-sm" style={{ borderColor: "var(--color-border)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-              Log New Reading
-            </h3>
+        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-lg space-y-3.5 animate-fadeIn">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900">Log New Metric</h3>
             <button
               onClick={() => setAdding(false)}
-              className="text-xs text-gray-400 hover:text-gray-600"
+              className="text-xs text-slate-400 hover:text-slate-600"
             >
               Cancel
             </button>
           </div>
 
           <form onSubmit={handleAdd} className="space-y-3.5">
-            {/* Quick Vital Type Selector */}
             <div>
-              <label className="text-[11px] font-medium text-gray-500 mb-1.5 block">Measurement Type</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                Measurement Type
+              </label>
               <div className="grid grid-cols-5 gap-1.5">
-                {VITAL_TYPES.map((vt) => {
+                {VITAL_CONFIGS.map((vt) => {
                   const Icon = vt.icon;
                   const isSel = type === vt.id;
                   return (
@@ -138,19 +244,14 @@ export default function Vitals({ userId }) {
                         setType(vt.id);
                         setSelectedChartVital(vt.id);
                       }}
-                      className="flex flex-col items-center gap-1 p-2 rounded-xl border text-center transition-all"
-                      style={{
-                        backgroundColor: isSel ? "var(--color-primary-light)" : "var(--color-bg)",
-                        borderColor: isSel ? "var(--color-primary)" : "var(--color-border)",
-                      }}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-2xl border text-center transition-all ${
+                        isSel
+                          ? "bg-sky-50 border-sky-500 text-sky-700 font-bold"
+                          : "bg-slate-50 border-slate-200 text-slate-600"
+                      }`}
                     >
-                      <Icon size={16} color={isSel ? "var(--color-primary)" : "var(--color-text-muted)"} />
-                      <span
-                        className="text-[10px] font-medium truncate w-full"
-                        style={{ color: isSel ? "var(--color-primary-dark)" : "var(--color-text-muted)" }}
-                      >
-                        {vt.label}
-                      </span>
+                      <Icon size={15} />
+                      <span className="text-[10px] truncate w-full">{vt.shortLabel}</span>
                     </button>
                   );
                 })}
@@ -159,26 +260,28 @@ export default function Vitals({ userId }) {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-medium text-gray-500 mb-1 block">Value</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                  Value ({VITAL_CONFIGS.find((v) => v.id === type)?.unit})
+                </label>
                 <input
                   type="text"
-                  placeholder={activeVitalConfig.placeholder}
+                  placeholder={VITAL_CONFIGS.find((v) => v.id === type)?.placeholder}
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   required
-                  className="w-full border rounded-xl px-3 py-2 text-sm bg-white"
-                  style={{ borderColor: "var(--color-border)" }}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-gray-500 mb-1 block">Date</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                  Date
+                </label>
                 <input
                   type="date"
                   value={recordedAt}
                   onChange={(e) => setRecordedAt(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2 text-sm bg-white"
-                  style={{ borderColor: "var(--color-border)" }}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-white"
                 />
               </div>
             </div>
@@ -187,16 +290,14 @@ export default function Vitals({ userId }) {
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-1 rounded-xl py-2.5 text-xs font-semibold text-white"
-                style={{ backgroundColor: "var(--color-primary)" }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-xs"
               >
-                {saving ? "Saving reading..." : "Save Reading"}
+                {saving ? "Saving..." : "Save Reading"}
               </button>
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="px-4 rounded-xl py-2.5 text-xs font-medium border"
-                style={{ borderColor: "var(--color-border)", color: "var(--color-text-muted)" }}
+                className="px-4 py-2.5 rounded-xl text-xs font-medium border border-slate-200 text-slate-600"
               >
                 Cancel
               </button>
@@ -205,123 +306,63 @@ export default function Vitals({ userId }) {
         </div>
       )}
 
-      {/* Chart Section */}
-      <div>
-        {/* Vital Type Selector for Chart */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
-          {VITAL_TYPES.map((vt) => {
-            const isSel = selectedChartVital === vt.id;
-            return (
-              <button
-                key={vt.id}
-                onClick={() => setSelectedChartVital(vt.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 transition-all"
-                style={{
-                  backgroundColor: isSel ? "var(--color-primary)" : "white",
-                  color: isSel ? "white" : "var(--color-text-muted)",
-                  border: isSel ? "none" : "1px solid var(--color-border)",
-                  boxShadow: isSel ? "0 2px 4px rgba(0,0,0,0.08)" : "none",
-                }}
-              >
-                <vt.icon size={13} color={isSel ? "white" : "var(--color-primary)"} />
-                <span>{vt.id}</span>
-              </button>
-            );
-          })}
+      {/* Visual Clinical Trend Chart (Deep Indigo Modern Style) */}
+      <VitalsChart data={vitals} vitalType={selectedChartVital} />
+
+      {/* Recent Measurement Logs List with Range Bar Indicators */}
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-slate-900">Recent Logs & Lab History</h3>
+          <span className="text-[11px] text-slate-400 font-semibold">{vitals.length} total</span>
         </div>
 
-        {/* Visual Trend Chart */}
-        <VitalsChart data={vitals} vitalType={selectedChartVital} />
-      </div>
+        {vitals.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-6">No vital readings logged yet.</p>
+        ) : (
+          <div className="space-y-2.5">
+            {vitals.slice(0, 8).map((v) => {
+              const evalRes = evaluateVital(v.type, v.value);
+              const isNormal = evalRes?.status === "Normal" || evalRes?.status === "Optimal";
 
-      {/* Logged History List */}
-      <div className="bg-white rounded-2xl p-4 border" style={{ borderColor: "var(--color-border)" }}>
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <h3 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-            History Logs
-          </h3>
-
-          {/* Filter pills */}
-          <div className="flex items-center gap-1 overflow-x-auto py-0.5">
-            {["All", "Blood Pressure", "Glucose", "Heart Rate"].map((f) => (
-              <button
-                key={f}
-                onClick={() => setHistoryFilter(f)}
-                className="px-2 py-0.5 text-[10px] font-medium rounded-lg transition-colors"
-                style={{
-                  backgroundColor: historyFilter === f ? "var(--color-primary-light)" : "transparent",
-                  color: historyFilter === f ? "var(--color-primary-dark)" : "var(--color-text-muted)",
-                }}
-              >
-                {f === "Blood Pressure" ? "BP" : f}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {loading && (
-          <p className="text-xs p-4 text-center" style={{ color: "var(--color-text-muted)" }}>
-            Loading vitals history...
-          </p>
-        )}
-
-        {!loading && filteredHistory.length === 0 && (
-          <div className="text-center py-6 border border-dashed rounded-xl" style={{ borderColor: "var(--color-border)" }}>
-            <Activity size={22} className="mx-auto text-gray-400 mb-1" />
-            <p className="text-xs text-gray-500">No vitals logged for this filter.</p>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          {filteredHistory.map((v) => {
-            const ev = evaluateVital(v.type, v.value);
-            return (
-              <div
-                key={v.id}
-                className="flex justify-between items-center border rounded-xl px-3.5 py-2.5 hover:bg-slate-50/50 transition-colors"
-                style={{ borderColor: "var(--color-border)" }}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-semibold text-gray-900">
-                      {v.type}: {v.value}
-                    </p>
-                    {ev && (
-                      <span
-                        className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
-                        style={{
-                          backgroundColor: ev.badgeBg,
-                          color: ev.badgeText,
-                          border: `0.5px solid ${ev.borderColor}`,
-                        }}
-                      >
-                        {ev.status}
-                      </span>
-                    )}
+              return (
+                <div
+                  key={v.id}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-100 hover:bg-slate-50 transition-all"
+                >
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">{v.type}</p>
+                    <span className="text-[10px] text-slate-400">{v.recorded_at}</span>
                   </div>
 
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[11px] text-gray-500">{v.recorded_at}</span>
-                    {ev?.desc && (
-                      <>
-                        <span className="text-gray-300">•</span>
-                        <span className="text-[11px] text-gray-500 truncate">{ev.desc}</span>
-                      </>
-                    )}
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className="text-xs font-black text-slate-900">{v.value}</span>
+                      <div className="flex items-center justify-end gap-1 mt-0.5">
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
+                            isNormal
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border border-rose-200"
+                          }`}
+                        >
+                          {evalRes?.status || "Logged"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleDelete(v.id)}
+                      className="p-1 text-slate-300 hover:text-rose-500 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
-
-                <button
-                  onClick={() => handleDelete(v.id)}
-                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-2"
-                  title="Delete reading"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );

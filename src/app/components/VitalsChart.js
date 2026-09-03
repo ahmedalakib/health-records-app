@@ -2,16 +2,16 @@
 
 import { useState, useMemo } from "react";
 import { evaluateVital } from "../lib/healthStandards";
-import { TrendingUp, Calendar, Info } from "lucide-react";
+import { TrendingUp, Calendar, Info, ChevronRight, Activity } from "lucide-react";
 
 export default function VitalsChart({ data = [], vitalType = "Blood Pressure" }) {
-  const [rangeFilter, setRangeFilter] = useState("30d"); // "7d", "30d", "all"
+  const [rangeFilter, setRangeFilter] = useState("30D"); // "All", "30D", "3M", "6M", "1Y"
   const [activePoint, setActivePoint] = useState(null);
+
+  const isBP = vitalType.toLowerCase().includes("pressure") || vitalType === "BP";
 
   // Filter and sort items chronologically
   const chartItems = useMemo(() => {
-    const isBP = vitalType.toLowerCase().includes("pressure") || vitalType === "BP";
-
     let filtered = data.filter((item) => {
       const itType = (item.type || "").toLowerCase();
       const targetType = vitalType.toLowerCase();
@@ -19,47 +19,57 @@ export default function VitalsChart({ data = [], vitalType = "Blood Pressure" })
       return itType.includes(targetType);
     });
 
-    // Apply time range filter
     const now = new Date();
-    if (rangeFilter === "7d") {
-      const cut = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter((d) => new Date(d.recorded_at) >= cut);
-    } else if (rangeFilter === "30d") {
+    if (rangeFilter === "30D") {
       const cut = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter((d) => new Date(d.recorded_at) >= cut);
+    } else if (rangeFilter === "3M") {
+      const cut = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter((d) => new Date(d.recorded_at) >= cut);
+    } else if (rangeFilter === "6M") {
+      const cut = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter((d) => new Date(d.recorded_at) >= cut);
+    } else if (rangeFilter === "1Y") {
+      const cut = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
       filtered = filtered.filter((d) => new Date(d.recorded_at) >= cut);
     }
 
-    // Sort oldest to newest
     const sorted = [...filtered].sort(
       (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime()
     );
 
-    // Map parsed values
-    return sorted.map((item) => {
-      const evaluation = evaluateVital(item.type, item.value);
-      if (isBP) {
-        const parts = String(item.value).split(/[/|\-\s]+/).map((p) => parseFloat(p)).filter((n) => !isNaN(n));
-        return {
-          ...item,
-          systolic: parts[0] || null,
-          diastolic: parts[1] || null,
-          evaluation,
-        };
-      } else {
-        const match = String(item.value).match(/[-+]?[0-9]*\.?[0-9]+/);
-        const val = match ? parseFloat(match[0]) : null;
-        return {
-          ...item,
-          numericVal: val,
-          evaluation,
-        };
-      }
-    }).filter((item) => isBP ? (item.systolic !== null && item.diastolic !== null) : item.numericVal !== null);
-  }, [data, vitalType, rangeFilter]);
+    return sorted
+      .map((item) => {
+        const evaluation = evaluateVital(item.type, item.value);
+        if (isBP) {
+          const parts = String(item.value)
+            .split(/[/|\-\s]+/)
+            .map((p) => parseFloat(p))
+            .filter((n) => !isNaN(n));
+          return {
+            ...item,
+            systolic: parts[0] || null,
+            diastolic: parts[1] || null,
+            evaluation,
+          };
+        } else {
+          const match = String(item.value).match(/[-+]?[0-9]*\.?[0-9]+/);
+          const val = match ? parseFloat(match[0]) : null;
+          return {
+            ...item,
+            numericVal: val,
+            evaluation,
+          };
+        }
+      })
+      .filter((item) =>
+        isBP
+          ? item.systolic !== null && item.diastolic !== null
+          : item.numericVal !== null
+      );
+  }, [data, vitalType, rangeFilter, isBP]);
 
-  const isBP = vitalType.toLowerCase().includes("pressure") || vitalType === "BP";
-
-  // Calculate stats
+  // Statistics Calculation
   const stats = useMemo(() => {
     if (chartItems.length === 0) return null;
 
@@ -72,9 +82,9 @@ export default function VitalsChart({ data = [], vitalType = "Blood Pressure" })
       return {
         latest: `${latest.systolic}/${latest.diastolic}`,
         average: `${avgSys}/${avgDia}`,
-        min: `${Math.min(...systolics)}/${Math.min(...diastolics)}`,
-        max: `${Math.max(...systolics)}/${Math.max(...diastolics)}`,
-        count: chartItems.length,
+        unit: "mmHg",
+        status: latest.evaluation?.status || "Normal",
+        updatedAt: latest.recorded_at,
       };
     } else {
       const vals = chartItems.map((c) => c.numericVal);
@@ -82,22 +92,22 @@ export default function VitalsChart({ data = [], vitalType = "Blood Pressure" })
       const latest = chartItems[chartItems.length - 1];
       const unit = latest.evaluation?.parsed?.unit || "";
       return {
-        latest: `${latest.numericVal} ${unit}`.trim(),
-        average: `${avg} ${unit}`.trim(),
-        min: `${Math.min(...vals)} ${unit}`.trim(),
-        max: `${Math.max(...vals)} ${unit}`.trim(),
-        count: chartItems.length,
+        latest: `${latest.numericVal}`,
+        average: `${avg}`,
+        unit: unit || "units",
+        status: latest.evaluation?.status || "Normal",
+        updatedAt: latest.recorded_at,
       };
     }
   }, [chartItems, isBP]);
 
-  // Chart coordinate computation
+  // SVG Dimension Constants
   const svgWidth = 500;
-  const svgHeight = 200;
-  const padTop = 20;
-  const padBottom = 30;
-  const padLeft = 35;
-  const padRight = 20;
+  const svgHeight = 220;
+  const padTop = 30;
+  const padBottom = 35;
+  const padLeft = 45;
+  const padRight = 25;
 
   const innerWidth = svgWidth - padLeft - padRight;
   const innerHeight = svgHeight - padTop - padBottom;
@@ -108,13 +118,13 @@ export default function VitalsChart({ data = [], vitalType = "Blood Pressure" })
     let minVal, maxVal;
     if (isBP) {
       const allVals = chartItems.flatMap((c) => [c.systolic, c.diastolic]);
-      minVal = Math.floor(Math.min(...allVals, 60) / 10) * 10;
-      maxVal = Math.ceil(Math.max(...allVals, 140) / 10) * 10;
+      minVal = Math.floor(Math.min(...allVals, 50) / 10) * 10;
+      maxVal = Math.ceil(Math.max(...allVals, 150) / 10) * 10;
     } else {
       const vals = chartItems.map((c) => c.numericVal);
       const min = Math.min(...vals);
       const max = Math.max(...vals);
-      const pad = (max - min) * 0.15 || 5;
+      const pad = (max - min) * 0.2 || 5;
       minVal = Math.floor(min - pad);
       maxVal = Math.ceil(max + pad);
     }
@@ -122,9 +132,10 @@ export default function VitalsChart({ data = [], vitalType = "Blood Pressure" })
     const valSpan = maxVal - minVal || 1;
 
     const coords = chartItems.map((item, idx) => {
-      const x = chartItems.length === 1
-        ? padLeft + innerWidth / 2
-        : padLeft + (idx / (chartItems.length - 1)) * innerWidth;
+      const x =
+        chartItems.length === 1
+          ? padLeft + innerWidth / 2
+          : padLeft + (idx / (chartItems.length - 1)) * innerWidth;
 
       if (isBP) {
         const ySys = padTop + innerHeight - ((item.systolic - minVal) / valSpan) * innerHeight;
@@ -136,8 +147,21 @@ export default function VitalsChart({ data = [], vitalType = "Blood Pressure" })
       }
     });
 
-    return { coords, minVal, maxVal };
-  }, [chartItems, isBP, innerWidth, innerHeight]);
+    // Reference Band: Normal Healthy Range
+    let normalTopY, normalBottomY;
+    if (isBP) {
+      normalTopY = padTop + innerHeight - ((120 - minVal) / valSpan) * innerHeight;
+      normalBottomY = padTop + innerHeight - ((80 - minVal) / valSpan) * innerHeight;
+    } else if (vitalType.toLowerCase().includes("glucose")) {
+      normalTopY = padTop + innerHeight - ((140 - minVal) / valSpan) * innerHeight;
+      normalBottomY = padTop + innerHeight - ((70 - minVal) / valSpan) * innerHeight;
+    } else if (vitalType.toLowerCase().includes("heart")) {
+      normalTopY = padTop + innerHeight - ((100 - minVal) / valSpan) * innerHeight;
+      normalBottomY = padTop + innerHeight - ((60 - minVal) / valSpan) * innerHeight;
+    }
+
+    return { coords, minVal, maxVal, normalTopY, normalBottomY };
+  }, [chartItems, isBP, innerWidth, innerHeight, vitalType]);
 
   function formatDate(dStr) {
     if (!dStr) return "";
@@ -146,267 +170,243 @@ export default function VitalsChart({ data = [], vitalType = "Blood Pressure" })
   }
 
   return (
-    <div className="bg-white rounded-2xl p-4 border mb-6" style={{ borderColor: "var(--color-border)" }}>
-      {/* Header & Filter */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
-          <TrendingUp size={18} color="var(--color-primary)" />
-          <h3 className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-            {vitalType} Trend
-          </h3>
+    <div className="bg-gradient-to-br from-[#1E1B4B] via-[#2E1065] to-[#1E1B4B] text-white rounded-3xl p-5 shadow-xl shadow-indigo-950/30 border border-indigo-500/20 relative overflow-hidden mb-6">
+      {/* Background ambient lighting */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Header Info */}
+      <div className="flex justify-between items-start mb-4 relative z-10">
+        <div>
+          <div className="flex items-center gap-1.5 text-xs text-indigo-300 font-medium">
+            <span>{vitalType} Detail</span>
+            <Info size={13} className="text-indigo-400" />
+          </div>
+          <h2 className="text-2xl font-black tracking-tight text-white mt-0.5">
+            {stats ? stats.latest : "--"}{" "}
+            <span className="text-xs font-semibold text-indigo-300 font-normal">
+              {stats?.unit}
+            </span>
+          </h2>
+          <p className="text-[11px] text-indigo-300/80 mt-0.5">
+            Updated: {stats?.updatedAt ? formatDate(stats.updatedAt) : "No record"} • Measured in {stats?.unit || "standard units"}
+          </p>
         </div>
-        <div className="flex rounded-lg p-0.5 border" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
-          {["7d", "30d", "all"].map((r) => (
+
+        {/* Time Filters */}
+        <div className="flex rounded-xl p-1 bg-white/10 backdrop-blur-md border border-white/10">
+          {["All", "30D", "3M", "6M", "1Y"].map((r) => (
             <button
               key={r}
               onClick={() => setRangeFilter(r)}
-              className="px-2 py-0.5 text-[11px] font-medium rounded-md transition-colors"
+              className="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all"
               style={{
                 backgroundColor: rangeFilter === r ? "white" : "transparent",
-                color: rangeFilter === r ? "var(--color-primary)" : "var(--color-text-muted)",
-                boxShadow: rangeFilter === r ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                color: rangeFilter === r ? "#1E1B4B" : "#C7D2FE",
+                boxShadow: rangeFilter === r ? "0 2px 6px rgba(0,0,0,0.2)" : "none",
               }}
             >
-              {r === "7d" ? "7 Days" : r === "30d" ? "30 Days" : "All"}
+              {r}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Stats row */}
-      {stats && (
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          <div className="bg-slate-50/70 rounded-xl p-2 border" style={{ borderColor: "var(--color-border)" }}>
-            <span className="text-[10px] text-gray-500">Latest</span>
-            <p className="text-xs font-semibold text-gray-900 mt-0.5">{stats.latest}</p>
-          </div>
-          <div className="bg-slate-50/70 rounded-xl p-2 border" style={{ borderColor: "var(--color-border)" }}>
-            <span className="text-[10px] text-gray-500">Average</span>
-            <p className="text-xs font-semibold text-gray-900 mt-0.5">{stats.average}</p>
-          </div>
-          <div className="bg-slate-50/70 rounded-xl p-2 border" style={{ borderColor: "var(--color-border)" }}>
-            <span className="text-[10px] text-gray-500">Min</span>
-            <p className="text-xs font-semibold text-gray-900 mt-0.5">{stats.min}</p>
-          </div>
-          <div className="bg-slate-50/70 rounded-xl p-2 border" style={{ borderColor: "var(--color-border)" }}>
-            <span className="text-[10px] text-gray-500">Max</span>
-            <p className="text-xs font-semibold text-gray-900 mt-0.5">{stats.max}</p>
-          </div>
-        </div>
-      )}
-
       {/* Chart Canvas */}
       {chartItems.length < 2 ? (
-        <div className="py-8 text-center rounded-xl bg-slate-50/50 border border-dashed" style={{ borderColor: "var(--color-border)" }}>
-          <Info size={24} className="mx-auto text-gray-400 mb-1" />
-          <p className="text-xs font-medium" style={{ color: "var(--color-text)" }}>
-            {chartItems.length === 0 ? "No readings in this date range" : "Need at least 2 readings to draw a trend"}
-          </p>
-          <p className="text-[11px] text-gray-500 mt-0.5">
-            Log readings consistently to track clinical changes over time.
+        <div className="py-12 text-center rounded-2xl bg-white/5 border border-dashed border-white/10 relative z-10">
+          <Activity size={24} className="mx-auto text-indigo-300/60 mb-2" />
+          <p className="text-xs font-bold text-white">Need at least 2 readings</p>
+          <p className="text-[11px] text-indigo-300 mt-0.5">
+            Log readings over time to view clinical trend curves.
           </p>
         </div>
       ) : (
-        <div className="relative">
-          <svg
-            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full h-44 overflow-visible select-none"
-          >
-            <defs>
-              <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0.01" />
-              </linearGradient>
-            </defs>
+        pointsData && (
+          <div className="relative z-10">
+            <svg
+              viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+              className="w-full h-44 sm:h-52 overflow-visible"
+            >
+              <defs>
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
 
-            {/* Horizontal Grid lines */}
-            {[0, 0.33, 0.66, 1].map((ratio, i) => {
-              const y = padTop + innerHeight * ratio;
-              const val = Math.round(pointsData.maxVal - ratio * (pointsData.maxVal - pointsData.minVal));
-              return (
-                <g key={i}>
+              {/* Shaded Healthy Range Band */}
+              {pointsData.normalTopY && pointsData.normalBottomY && (
+                <g>
+                  <rect
+                    x={padLeft}
+                    y={Math.min(pointsData.normalTopY, pointsData.normalBottomY)}
+                    width={innerWidth}
+                    height={Math.abs(pointsData.normalBottomY - pointsData.normalTopY)}
+                    fill="rgba(56, 189, 248, 0.12)"
+                    rx={6}
+                  />
                   <line
                     x1={padLeft}
-                    y1={y}
-                    x2={svgWidth - padRight}
-                    y2={y}
-                    stroke="#E2E8F0"
+                    y1={Math.min(pointsData.normalTopY, pointsData.normalBottomY)}
+                    x2={padLeft + innerWidth}
+                    y2={Math.min(pointsData.normalTopY, pointsData.normalBottomY)}
+                    stroke="#38BDF8"
                     strokeDasharray="3 3"
-                    strokeWidth="0.8"
+                    strokeWidth="1"
+                    opacity="0.4"
                   />
-                  <text
-                    x={padLeft - 6}
-                    y={y + 3}
-                    textAnchor="end"
-                    fontSize="9"
-                    fill="#94A3B8"
-                    className="font-mono"
-                  >
-                    {val}
-                  </text>
+                  <line
+                    x1={padLeft}
+                    y1={Math.max(pointsData.normalTopY, pointsData.normalBottomY)}
+                    x2={padLeft + innerWidth}
+                    y2={Math.max(pointsData.normalTopY, pointsData.normalBottomY)}
+                    stroke="#38BDF8"
+                    strokeDasharray="3 3"
+                    strokeWidth="1"
+                    opacity="0.4"
+                  />
                 </g>
-              );
-            })}
-
-            {/* Blood Pressure Dual Lines */}
-            {isBP && pointsData && (
-              <>
-                {/* Systolic Line */}
-                <path
-                  d={pointsData.coords.reduce(
-                    (acc, pt, i) => `${acc} ${i === 0 ? "M" : "L"} ${pt.x} ${pt.ySys}`,
-                    ""
-                  )}
-                  fill="none"
-                  stroke="var(--color-primary)"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {/* Diastolic Line */}
-                <path
-                  d={pointsData.coords.reduce(
-                    (acc, pt, i) => `${acc} ${i === 0 ? "M" : "L"} ${pt.x} ${pt.yDia}`,
-                    ""
-                  )}
-                  fill="none"
-                  stroke="#3B82F6"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-
-                {/* Data point circles */}
-                {pointsData.coords.map((pt, i) => (
-                  <g key={i} className="cursor-pointer" onClick={() => setActivePoint(pt)}>
-                    <circle
-                      cx={pt.x}
-                      cy={pt.ySys}
-                      r={activePoint?.id === pt.id ? 5 : 3.5}
-                      fill="var(--color-primary)"
-                      stroke="white"
-                      strokeWidth="2"
-                    />
-                    <circle
-                      cx={pt.x}
-                      cy={pt.yDia}
-                      r={activePoint?.id === pt.id ? 5 : 3.5}
-                      fill="#3B82F6"
-                      stroke="white"
-                      strokeWidth="2"
-                    />
-                    {/* Date label on X axis */}
-                    <text
-                      x={pt.x}
-                      y={svgHeight - 6}
-                      textAnchor="middle"
-                      fontSize="9"
-                      fill="#64748B"
-                    >
-                      {formatDate(pt.recorded_at)}
-                    </text>
-                  </g>
-                ))}
-              </>
-            )}
-
-            {/* Single Value Trend Lines (Weight, Glucose, Heart Rate, etc) */}
-            {!isBP && pointsData && (
-              <>
-                {/* Area under curve */}
-                <path
-                  d={`
-                    ${pointsData.coords.reduce((acc, pt, i) => `${acc} ${i === 0 ? "M" : "L"} ${pt.x} ${pt.y}`, "")}
-                    L ${pointsData.coords[pointsData.coords.length - 1].x} ${padTop + innerHeight}
-                    L ${pointsData.coords[0].x} ${padTop + innerHeight}
-                    Z
-                  `}
-                  fill="url(#areaGradient)"
-                />
-                {/* Line */}
-                <path
-                  d={pointsData.coords.reduce(
-                    (acc, pt, i) => `${acc} ${i === 0 ? "M" : "L"} ${pt.x} ${pt.y}`,
-                    ""
-                  )}
-                  fill="none"
-                  stroke="var(--color-primary)"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {/* Dots */}
-                {pointsData.coords.map((pt, i) => (
-                  <g key={i} className="cursor-pointer" onClick={() => setActivePoint(pt)}>
-                    <circle
-                      cx={pt.x}
-                      cy={pt.y}
-                      r={activePoint?.id === pt.id ? 5 : 3.5}
-                      fill="var(--color-primary)"
-                      stroke="white"
-                      strokeWidth="2"
-                    />
-                    <text
-                      x={pt.x}
-                      y={svgHeight - 6}
-                      textAnchor="middle"
-                      fontSize="9"
-                      fill="#64748B"
-                    >
-                      {formatDate(pt.recorded_at)}
-                    </text>
-                  </g>
-                ))}
-              </>
-            )}
-          </svg>
-
-          {/* Active tooltip popover */}
-          {activePoint && (
-            <div
-              className="mt-2 p-2.5 rounded-xl border flex items-center justify-between text-xs transition-all"
-              style={{
-                backgroundColor: activePoint.evaluation?.badgeBg || "#F8FAFC",
-                borderColor: activePoint.evaluation?.borderColor || "var(--color-border)",
-              }}
-            >
-              <div>
-                <span className="font-semibold text-gray-900">
-                  {activePoint.type}: {activePoint.value}
-                </span>
-                <span className="text-[10px] text-gray-500 ml-2">
-                  ({formatDate(activePoint.recorded_at)})
-                </span>
-              </div>
-              {activePoint.evaluation && (
-                <span
-                  className="px-2 py-0.5 rounded-md font-semibold text-[10px]"
-                  style={{
-                    backgroundColor: "white",
-                    color: activePoint.evaluation.badgeText,
-                    border: `1px solid ${activePoint.evaluation.borderColor}`,
-                  }}
-                >
-                  {activePoint.evaluation.status}
-                </span>
               )}
-            </div>
-          )}
 
-          {/* Legend */}
-          {isBP && (
-            <div className="flex items-center justify-center gap-4 mt-2 text-[11px] text-gray-600">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "var(--color-primary)" }} />
-                <span>Systolic (Top)</span>
+              {/* Grid Reference Lines */}
+              {[0, 0.5, 1].map((pct, i) => {
+                const y = padTop + pct * innerHeight;
+                const val = Math.round(pointsData.maxVal - pct * (pointsData.maxVal - pointsData.minVal));
+                return (
+                  <g key={i}>
+                    <line
+                      x1={padLeft}
+                      y1={y}
+                      x2={padLeft + innerWidth}
+                      y2={y}
+                      stroke="rgba(255, 255, 255, 0.1)"
+                      strokeWidth="1"
+                    />
+                    <text
+                      x={padLeft - 8}
+                      y={y + 3}
+                      fill="#94A3B8"
+                      fontSize="9"
+                      textAnchor="end"
+                      fontWeight="bold"
+                    >
+                      {val}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Non-BP Line and Area */}
+              {!isBP && (
+                <g>
+                  {/* Area fill */}
+                  <path
+                    d={`
+                      M ${pointsData.coords[0].x} ${padTop + innerHeight}
+                      ${pointsData.coords.map((c) => `L ${c.x} ${c.y}`).join(" ")}
+                      L ${pointsData.coords[pointsData.coords.length - 1].x} ${padTop + innerHeight}
+                      Z
+                    `}
+                    fill="url(#chartGradient)"
+                  />
+                  {/* Main Line */}
+                  <path
+                    d={`M ${pointsData.coords.map((c) => `${c.x} ${c.y}`).join(" L ")}`}
+                    fill="none"
+                    stroke="#38BDF8"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Points */}
+                  {pointsData.coords.map((c, i) => (
+                    <circle
+                      key={i}
+                      cx={c.x}
+                      cy={c.y}
+                      r="4.5"
+                      fill="white"
+                      stroke="#0284C7"
+                      strokeWidth="2.5"
+                      className="cursor-pointer transition-transform hover:scale-125"
+                    />
+                  ))}
+                </g>
+              )}
+
+              {/* Blood Pressure Lines */}
+              {isBP && (
+                <g>
+                  <path
+                    d={`M ${pointsData.coords.map((c) => `${c.x} ${c.ySys}`).join(" L ")}`}
+                    fill="none"
+                    stroke="#F43F5E"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d={`M ${pointsData.coords.map((c) => `${c.x} ${c.yDia}`).join(" L ")}`}
+                    fill="none"
+                    stroke="#38BDF8"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                  {pointsData.coords.map((c, i) => (
+                    <g key={i}>
+                      <circle cx={c.x} cy={c.ySys} r="4" fill="white" stroke="#F43F5E" strokeWidth="2" />
+                      <circle cx={c.x} cy={c.yDia} r="4" fill="white" stroke="#38BDF8" strokeWidth="2" />
+                    </g>
+                  ))}
+                </g>
+              )}
+
+              {/* X-axis Date Labels */}
+              {pointsData.coords.map((c, i) => {
+                // Show dates selectively to avoid clutter
+                if (pointsData.coords.length > 5 && i % 2 !== 0 && i !== pointsData.coords.length - 1) return null;
+                return (
+                  <text
+                    key={i}
+                    x={c.x}
+                    y={svgHeight - 10}
+                    fill="#94A3B8"
+                    fontSize="9"
+                    textAnchor="middle"
+                    fontWeight="bold"
+                  >
+                    {formatDate(c.recorded_at)}
+                  </text>
+                );
+              })}
+            </svg>
+
+            {/* Legend */}
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/10 text-[11px] text-indigo-200">
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-sky-400/20 border border-sky-400" />
+                  Healthy target range
+                </span>
+                {isBP && (
+                  <>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      Systolic
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-sky-400" />
+                      Diastolic
+                    </span>
+                  </>
+                )}
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                <span>Diastolic (Bottom)</span>
-              </div>
+              <span className="text-[10px] text-indigo-300 font-semibold">
+                {chartItems.length} readings analyzed
+              </span>
             </div>
-          )}
-        </div>
+          </div>
+        )
       )}
     </div>
   );
