@@ -1,0 +1,17 @@
+{
+  "name": "Sanomed — Medical Health Hub",
+  "short_name": "Sanomed",
+  "description": "Clinical-grade personal health records, prescription management, and biometric tracking.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0284C7",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
