@@ -11,6 +11,7 @@ import Documents from "./Documents";
 import PrescriptionUpload from "./PrescriptionUpload";
 import HomeDashboard from "./HomeDashboard";
 import GlobalSearchModal from "./components/GlobalSearchModal";
+import HealthChatbot from "./components/HealthChatbot";
 import { HeartPulse, Home, Pill, Activity, Folder, User, Stethoscope, ShieldAlert, Search } from "lucide-react";
 
 export default function HomePage() {
@@ -280,6 +281,9 @@ export default function HomePage() {
         visits={searchData.visits}
         documents={searchData.documents}
       />
+
+      {/* Sanomed AI Health Assistant Chatbot (Floating) */}
+      <HealthChatbot />
     </main>
   );
 }
