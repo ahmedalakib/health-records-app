@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 
 const SYSTEM_PROMPT = `You are Sanomed Health Assistant — a friendly, knowledgeable AI medical assistant built into the Sanomed health app.
 
@@ -7,11 +7,11 @@ Your role:
 - Help users understand their diagnoses, medications, lab results, and vitals.
 - Provide dosage information, drug interaction warnings, and healthy range explanations.
 - Always recommend consulting a licensed physician for serious or urgent medical concerns.
-- Keep replies short and scannable — use bullet points, bold keywords, and simple language.
+- Keep replies short and scannable — use bullet points and simple language.
 - Never diagnose diseases definitively — only educate and inform.
 - If a question is outside health/medicine scope, politely redirect to health topics.
 
-Always end with a short 1-line reminder like: "Always consult your doctor for personalized advice."`;
+Always end your reply with a short reminder like: "Always consult your doctor for personalized advice."`;
 
 export async function POST(request) {
   try {
@@ -21,41 +21,46 @@ export async function POST(request) {
       return Response.json({ error: "Message is required" }, { status: 400 });
     }
 
-    const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+    const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return Response.json({ error: "Gemini API key not configured" }, { status: 500 });
+      return Response.json({ error: "Anthropic API key not configured" }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: SYSTEM_PROMPT,
-    });
+    const client = new Anthropic({ apiKey });
 
     // Build conversation history for context
-    const chatHistory = (history || []).map((msg) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: [{ text: msg.content }],
-    }));
+    const messages = [
+      ...(history || [])
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({
+          role: m.role === "user" ? "user" : "assistant",
+          content: m.content,
+        })),
+      { role: "user", content: message },
+    ];
 
-    const chat = model.startChat({ history: chatHistory });
-    const result = await chat.sendMessage(message);
-    const text = result.response.text();
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 600,
+      system: SYSTEM_PROMPT,
+      messages,
+    });
 
-    return Response.json({ reply: text });
+    const reply = response.content[0]?.text || "I couldn't generate a response. Please try again.";
+
+    return Response.json({ reply });
   } catch (error) {
-    console.error("Gemini API error:", error);
+    console.error("Claude API error:", error);
 
-    // Handle API key errors specifically
-    if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("API key")) {
+    if (error.status === 401) {
       return Response.json(
-        { error: "invalid_key", message: "The Gemini API key appears to be invalid. Please check your .env.local file." },
+        { error: "invalid_key", message: "The Anthropic API key appears to be invalid." },
         { status: 401 }
       );
     }
 
     return Response.json(
-      { error: "Failed to get response from AI assistant." },
+      { error: "Failed to get a response from the AI assistant." },
       { status: 500 }
     );
   }

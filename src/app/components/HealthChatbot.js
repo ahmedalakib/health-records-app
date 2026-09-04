@@ -170,7 +170,7 @@ export default function HealthChatbot() {
                 <h3 className="text-sm font-bold tracking-tight">Sanomed Assistant</h3>
                 <p className="text-[10px] text-sky-100 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-                  Powered by Gemini AI
+                  Powered by Claude AI
                 </p>
               </div>
             </div>
@@ -184,16 +184,7 @@ export default function HealthChatbot() {
             <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-start gap-2 shrink-0">
               <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
               <p className="text-[11px] text-amber-800 font-medium">
-                Invalid Gemini key. Get a valid one at{" "}
-                <a
-                  href="https://aistudio.google.com/apikey"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline font-bold"
-                >
-                  aistudio.google.com
-                </a>{" "}
-                (starts with AIzaSy...)
+                API key error. Please check your ANTHROPIC_API_KEY in .env.local.
               </p>
             </div>
           )}
