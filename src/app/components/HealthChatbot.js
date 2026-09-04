@@ -14,6 +14,7 @@ import {
   ChevronDown,
   AlertCircle,
 } from "lucide-react";
+import { getLocalHealthAdvice } from "../lib/localChatEngine";
 
 const QUICK_QUESTIONS = [
   "What does blood pressure 140/90 mean?",
@@ -111,12 +112,14 @@ export default function HealthChatbot() {
         ]);
       }
     } catch (err) {
+      // In native APK or when server is unreachable, use local clinical engine
+      const fallbackReply = getLocalHealthAdvice(userText);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "❌ Could not connect. Make sure your app server is running.",
-          isError: true,
+          content: fallbackReply,
+          query: userText,
         },
       ]);
     } finally {
