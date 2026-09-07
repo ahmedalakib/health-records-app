@@ -1,5 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+const serverUrl = process.env.CAPACITOR_SERVER_URL;
+
 const config: CapacitorConfig = {
   appId: 'com.sanomed.healthrecords',
   appName: 'Sanomed',
@@ -10,6 +12,7 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     cleartext: true,
+    ...(serverUrl ? { url: serverUrl } : {}),
   }
 };
 

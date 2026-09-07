@@ -1,0 +1,7 @@
+﻿{
+  "version": "1.0.1",
+  "name": "Sanomed v1.0.1",
+  "releaseDate": "2026-09-07",
+  "notes": "Redesigned login experience, Supabase database foundation, and in-app updates.",
+  "downloadUrl": "https://github.com/ahmedalakib/health-records-app/releases/latest/download/Sanomed.apk"
+}

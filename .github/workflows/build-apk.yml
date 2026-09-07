@@ -83,3 +83,16 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Prepare Release APK
+        if: success()
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Sanomed.apk
+
+      - name: Publish Latest GitHub Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Sanomed Android APK (Latest)"
+          body: "Official Sanomed Clinical Hub Android APK build. Tap `Sanomed.apk` below to install or update on your Android phone."
+          files: Sanomed.apk
