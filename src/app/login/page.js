@@ -1,155 +1,282 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../lib/supabaseClient";
-import { Shield, Sparkles, Lock, ArrowRight, Mail } from "lucide-react";
+import Link from "next/link";
+import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import BrandHeader from "../components/auth/BrandHeader";
+import SocialAuthButtons from "../components/auth/SocialAuthButtons";
+import AuthVisualSide from "../components/auth/AuthVisualSide";
+import ConfigAlert from "../components/auth/ConfigAlert";
+import { Lock, Mail, ArrowRight, Eye, EyeOff, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function Login() {
+  const [authMode, setAuthMode] = useState("password"); // "password" | "magic"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const router = useRouter();
 
   async function handlePasswordLogin(e) {
     e.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    if (!isSupabaseConfigured) {
+      setErrorMessage("Supabase is not configured yet. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local.");
+      return;
+    }
+
     setLoading(true);
-    setMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-    setLoading(false);
-    if (error) {
-      setMessage(error.message);
-    } else {
-      router.push("/");
+      if (error) {
+        setErrorMessage(error.message);
+      } else if (data?.user) {
+        router.push("/");
+      }
+    } catch (err) {
+      setErrorMessage(err.message || "An unexpected error occurred during login.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function handleMagicLink() {
-    if (!email) {
-      setMessage("Please enter your email address first.");
+  async function handleMagicLink(e) {
+    e.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    if (!email.trim()) {
+      setErrorMessage("Please enter your email address to receive a magic link.");
       return;
     }
+
+    if (!isSupabaseConfigured) {
+      setErrorMessage("Supabase is not configured yet. Add keys to .env.local to enable email magic links.");
+      return;
+    }
+
     setLoading(true);
-    setMessage("");
 
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    try {
+      const redirectTo = typeof window !== "undefined" ? window.location.origin + "/" : undefined;
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: redirectTo,
+        },
+      });
 
-    setLoading(false);
-    setMessage(error ? error.message : "Check your inbox for a secure login link.");
+      if (error) {
+        setErrorMessage(error.message);
+      } else {
+        setSuccessMessage("Secure magic link sent! Check your email inbox to sign in instantly.");
+      }
+    } catch (err) {
+      setErrorMessage(err.message || "Unable to send magic link.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-8 bg-slate-50 relative overflow-hidden">
-      {/* Background ambient medical glows */}
-      <div className="absolute -top-24 -left-24 w-96 h-96 bg-sky-100 rounded-full blur-3xl pointer-events-none opacity-60" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-100 rounded-full blur-3xl pointer-events-none opacity-60" />
+    <main className="min-h-screen bg-slate-100 flex items-center justify-center p-3 sm:p-6 lg:p-8">
+      {/* Outer Card / Split Container */}
+      <div className="w-full max-w-5xl bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-200/80 flex overflow-hidden min-h-[640px]">
+        {/* Left Side: Branded Medical Visuals (Desktop only) */}
+        <AuthVisualSide isSignup={false} />
 
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200 p-8 sm:p-10 relative z-10">
-        {/* Brand Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-500 via-sky-600 to-indigo-700 flex items-center justify-center shadow-md shadow-sky-600/30 p-2.5">
-            <svg
-              className="w-full h-full text-white"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeWidth="1.75" />
-              <path d="M9 7.5c1.5 1.5 4.5 1.5 6 0" strokeWidth="2" stroke="white" />
-              <path d="M15 12c-1.5 1.5-4.5 1.5-6 0" strokeWidth="2" stroke="white" />
-              <path d="M9 16.5c1.5 1.5 4.5 1.5 6 0" strokeWidth="2" stroke="white" />
-              <circle cx="12" cy="12" r="1.25" fill="white" />
-            </svg>
-          </div>
+        {/* Right Side: Auth Form Container */}
+        <div className="w-full lg:w-1/2 p-6 sm:p-10 lg:p-12 flex flex-col justify-between">
           <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
-              Sanomed
-              <span className="text-[10px] font-bold text-sky-600 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Clinical Hub
+            <BrandHeader subtitle="Access Your Medical Records" />
+
+            <ConfigAlert />
+
+            {/* Header copy */}
+            <div className="mb-6">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Welcome back</h1>
+              <p className="text-xs text-slate-500 mt-1">
+                Sign in to view your prescriptions, lab reports, doctor visits, and vitals.
+              </p>
+            </div>
+
+            {/* Social Login Options */}
+            <div className="mb-6">
+              <SocialAuthButtons onError={(err) => setErrorMessage(err)} />
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-6">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                or continue with email
               </span>
-            </h1>
-            <p className="text-xs text-slate-500">Secure Personal Medical Records</p>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+
+            {/* Auth Mode Tabs (Password vs Magic Link) */}
+            <div className="flex p-1 mb-5 bg-slate-100/80 rounded-xl border border-slate-200/60 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => { setAuthMode("password"); setErrorMessage(""); }}
+                className={`flex-1 py-2 rounded-lg transition-all cursor-pointer ${
+                  authMode === "password"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                Password
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAuthMode("magic"); setErrorMessage(""); }}
+                className={`flex-1 py-2 rounded-lg transition-all cursor-pointer ${
+                  authMode === "magic"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                Passwordless Magic Link
+              </button>
+            </div>
+
+            {/* Password Login Form */}
+            {authMode === "password" && (
+              <form onSubmit={handlePasswordLogin} className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block mb-1">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                    <input
+                      type="email"
+                      placeholder="patient@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      className="w-full border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 text-sm bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode("magic")}
+                      className="text-[11px] font-semibold text-sky-600 hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                      className="w-full border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-sm bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-slate-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-xl py-3 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-md shadow-sky-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  {loading ? "Verifying Credentials..." : "Sign In to Sanomed"}
+                  {!loading && <ArrowRight size={14} />}
+                </button>
+              </form>
+            )}
+
+            {/* Magic Link Form */}
+            {authMode === "magic" && (
+              <form onSubmit={handleMagicLink} className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block mb-1">
+                    Your Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                    <input
+                      type="email"
+                      placeholder="patient@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      className="w-full border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 text-sm bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-slate-900"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1.5">
+                    We will send a one-time secure sign-in link to this address. No password needed.
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-xl py-3 text-xs font-bold text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 shadow-md shadow-sky-600/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  {loading ? "Sending Magic Link..." : "Send Secure Login Link"}
+                  {!loading && <ArrowRight size={14} />}
+                </button>
+              </form>
+            )}
+
+            {/* Notifications */}
+            {errorMessage && (
+              <div className="mt-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200/80 text-xs text-rose-800 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                <span className="leading-relaxed">{errorMessage}</span>
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-xs text-emerald-800 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                <span className="leading-relaxed">{successMessage}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Footer link */}
+          <div className="pt-8 border-t border-slate-100 text-center">
+            <p className="text-xs text-slate-500">
+              Don&apos;t have a Sanomed account?{" "}
+              <Link href="/signup" className="text-sky-600 font-bold hover:underline">
+                Create an account
+              </Link>
+            </p>
           </div>
         </div>
-
-        <div className="mb-6">
-          <h2 className="text-lg font-bold text-slate-900">Welcome back</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Sign in to manage your prescriptions, visits, and vitals.</p>
-        </div>
-
-        <form onSubmit={handlePasswordLogin} className="space-y-3.5">
-          <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-xl py-3 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-md shadow-sky-600/25 active:scale-98 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
-          >
-            {loading ? "Signing in..." : "Sign In to Sanomed"}
-            {!loading && <ArrowRight size={14} />}
-          </button>
-        </form>
-
-        <div className="flex items-center gap-2 my-5">
-          <div className="flex-1 h-px bg-slate-200" />
-          <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">or</span>
-          <div className="flex-1 h-px bg-slate-200" />
-        </div>
-
-        <button
-          onClick={handleMagicLink}
-          disabled={loading}
-          type="button"
-          className="w-full rounded-xl py-2.5 text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-all flex items-center justify-center gap-2 shadow-2xs"
-        >
-          <Mail size={14} className="text-slate-500" />
-          <span>Send Magic Link to Email</span>
-        </button>
-
-        {message && (
-          <div className="mt-4 p-3 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-800 text-center">
-            {message}
-          </div>
-        )}
-
-        <p className="text-xs text-center mt-6 text-slate-500">
-          New to Sanomed?{" "}
-          <a href="/signup" className="text-sky-600 font-bold hover:underline">
-            Create an account
-          </a>
-        </p>
       </div>
     </main>
   );
