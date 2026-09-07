@@ -1,7 +1,7 @@
 ﻿{
-  "version": "1.0.1",
-  "name": "Sanomed v1.0.1",
+  "version": "1.0.2",
+  "name": "Sanomed v1.0.2 (Update Available)",
   "releaseDate": "2026-09-07",
-  "notes": "Redesigned login experience, Supabase database foundation, and in-app updates.",
+  "notes": "🎉 New clinical AI features, improved vitals monitoring, and instant cloud sync.",
   "downloadUrl": "https://github.com/ahmedalakib/health-records-app/releases/latest/download/Sanomed.apk"
 }
