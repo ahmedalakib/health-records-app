@@ -1,5 +1,5 @@
 ﻿-- ==============================================================================
--- SANOMED HEALTH APP - SUPABASE DATABASE FOUNDATION
+-- SANOMED HEALTH APP - SUPABASE DATABASE FOUNDATION (IDEMPOTENT)
 -- Migration: Initial Schema, Profiles, Vitals, Medications, Visits, Documents
 -- ==============================================================================
 
@@ -36,7 +36,7 @@ create table if not exists public.medications (
 create table if not exists public.vitals (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
-  type text not null, -- 'Blood Pressure', 'Heart Rate', 'Blood Glucose', 'Temperature', 'Oxygen Saturation'
+  type text not null,
   value text not null,
   unit text,
   recorded_at timestamptz default now() not null,
@@ -57,7 +57,7 @@ create table if not exists public.visits (
   created_at timestamptz default now() not null
 );
 
--- 5. DOCUMENTS / LAB REPORTS TABLE
+-- 5. DOCUMENTS TABLE
 create table if not exists public.documents (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
@@ -69,9 +69,7 @@ create table if not exists public.documents (
   uploaded_at timestamptz default now() not null
 );
 
--- ==============================================================================
--- INDEXES FOR HIGH-PERFORMANCE QUERIES
--- ==============================================================================
+-- INDEXES
 create index if not exists idx_profiles_user_id on public.profiles(user_id);
 create index if not exists idx_medications_user_id on public.medications(user_id);
 create index if not exists idx_vitals_user_id on public.vitals(user_id);
@@ -80,102 +78,76 @@ create index if not exists idx_visits_user_id on public.visits(user_id);
 create index if not exists idx_visits_visit_date on public.visits(visit_date desc);
 create index if not exists idx_documents_user_id on public.documents(user_id);
 
--- ==============================================================================
--- ROW LEVEL SECURITY (RLS) POLICIES
--- Ensures each user can strictly access only their own medical data
--- ==============================================================================
-
--- Enable RLS on all tables
+-- ENABLE RLS
 alter table public.profiles enable row level security;
 alter table public.medications enable row level security;
 alter table public.vitals enable row level security;
 alter table public.visits enable row level security;
 alter table public.documents enable row level security;
 
--- PROFILES RLS
-create policy "Users can view own profile"
-  on public.profiles for select
-  using (auth.uid() = user_id);
+-- PROFILES POLICIES
+drop policy if exists "Users can view own profile" on public.profiles;
+create policy "Users can view own profile" on public.profiles for select using (auth.uid() = user_id);
 
-create policy "Users can insert own profile"
-  on public.profiles for insert
-  with check (auth.uid() = user_id);
+drop policy if exists "Users can insert own profile" on public.profiles;
+create policy "Users can insert own profile" on public.profiles for insert with check (auth.uid() = user_id);
 
-create policy "Users can update own profile"
-  on public.profiles for update
-  using (auth.uid() = user_id);
+drop policy if exists "Users can update own profile" on public.profiles;
+create policy "Users can update own profile" on public.profiles for update using (auth.uid() = user_id);
 
--- MEDICATIONS RLS
-create policy "Users can view own medications"
-  on public.medications for select
-  using (auth.uid() = user_id);
+-- MEDICATIONS POLICIES
+drop policy if exists "Users can view own medications" on public.medications;
+create policy "Users can view own medications" on public.medications for select using (auth.uid() = user_id);
 
-create policy "Users can insert own medications"
-  on public.medications for insert
-  with check (auth.uid() = user_id);
+drop policy if exists "Users can insert own medications" on public.medications;
+create policy "Users can insert own medications" on public.medications for insert with check (auth.uid() = user_id);
 
-create policy "Users can update own medications"
-  on public.medications for update
-  using (auth.uid() = user_id);
+drop policy if exists "Users can update own medications" on public.medications;
+create policy "Users can update own medications" on public.medications for update using (auth.uid() = user_id);
 
-create policy "Users can delete own medications"
-  on public.medications for delete
-  using (auth.uid() = user_id);
+drop policy if exists "Users can delete own medications" on public.medications;
+create policy "Users can delete own medications" on public.medications for delete using (auth.uid() = user_id);
 
--- VITALS RLS
-create policy "Users can view own vitals"
-  on public.vitals for select
-  using (auth.uid() = user_id);
+-- VITALS POLICIES
+drop policy if exists "Users can view own vitals" on public.vitals;
+create policy "Users can view own vitals" on public.vitals for select using (auth.uid() = user_id);
 
-create policy "Users can insert own vitals"
-  on public.vitals for insert
-  with check (auth.uid() = user_id);
+drop policy if exists "Users can insert own vitals" on public.vitals;
+create policy "Users can insert own vitals" on public.vitals for insert with check (auth.uid() = user_id);
 
-create policy "Users can update own vitals"
-  on public.vitals for update
-  using (auth.uid() = user_id);
+drop policy if exists "Users can update own vitals" on public.vitals;
+create policy "Users can update own vitals" on public.vitals for update using (auth.uid() = user_id);
 
-create policy "Users can delete own vitals"
-  on public.vitals for delete
-  using (auth.uid() = user_id);
+drop policy if exists "Users can delete own vitals" on public.vitals;
+create policy "Users can delete own vitals" on public.vitals for delete using (auth.uid() = user_id);
 
--- VISITS RLS
-create policy "Users can view own visits"
-  on public.visits for select
-  using (auth.uid() = user_id);
+-- VISITS POLICIES
+drop policy if exists "Users can view own visits" on public.visits;
+create policy "Users can view own visits" on public.visits for select using (auth.uid() = user_id);
 
-create policy "Users can insert own visits"
-  on public.visits for insert
-  with check (auth.uid() = user_id);
+drop policy if exists "Users can insert own visits" on public.visits;
+create policy "Users can insert own visits" on public.visits for insert with check (auth.uid() = user_id);
 
-create policy "Users can update own visits"
-  on public.visits for update
-  using (auth.uid() = user_id);
+drop policy if exists "Users can update own visits" on public.visits;
+create policy "Users can update own visits" on public.visits for update using (auth.uid() = user_id);
 
-create policy "Users can delete own visits"
-  on public.visits for delete
-  using (auth.uid() = user_id);
+drop policy if exists "Users can delete own visits" on public.visits;
+create policy "Users can delete own visits" on public.visits for delete using (auth.uid() = user_id);
 
--- DOCUMENTS RLS
-create policy "Users can view own documents"
-  on public.documents for select
-  using (auth.uid() = user_id);
+-- DOCUMENTS POLICIES
+drop policy if exists "Users can view own documents" on public.documents;
+create policy "Users can view own documents" on public.documents for select using (auth.uid() = user_id);
 
-create policy "Users can insert own documents"
-  on public.documents for insert
-  with check (auth.uid() = user_id);
+drop policy if exists "Users can insert own documents" on public.documents;
+create policy "Users can insert own documents" on public.documents for insert with check (auth.uid() = user_id);
 
-create policy "Users can update own documents"
-  on public.documents for update
-  using (auth.uid() = user_id);
+drop policy if exists "Users can update own documents" on public.documents;
+create policy "Users can update own documents" on public.documents for update using (auth.uid() = user_id);
 
-create policy "Users can delete own documents"
-  on public.documents for delete
-  using (auth.uid() = user_id);
+drop policy if exists "Users can delete own documents" on public.documents;
+create policy "Users can delete own documents" on public.documents for delete using (auth.uid() = user_id);
 
--- ==============================================================================
--- AUTOMATIC PROFILE CREATION TRIGGER ON USER SIGNUP
--- ==============================================================================
+-- AUTOMATIC PROFILE TRIGGER
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
@@ -191,45 +163,29 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Trigger execution after auth.users row creation
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- ==============================================================================
--- STORAGE BUCKETS CONFIGURATION (AVATARS & MEDICAL DOCUMENTS)
--- ==============================================================================
-insert into storage.buckets (id, name, public)
-values ('avatars', 'avatars', true)
-on conflict (id) do nothing;
+-- STORAGE BUCKETS
+insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true) on conflict (id) do nothing;
+insert into storage.buckets (id, name, public) values ('documents', 'documents', false) on conflict (id) do nothing;
 
-insert into storage.buckets (id, name, public)
-values ('documents', 'documents', false)
-on conflict (id) do nothing;
+drop policy if exists "Avatar images are publicly accessible" on storage.objects;
+create policy "Avatar images are publicly accessible" on storage.objects for select using (bucket_id = 'avatars');
 
--- Storage RLS: Avatars bucket
-create policy "Avatar images are publicly accessible"
-  on storage.objects for select
-  using (bucket_id = 'avatars');
+drop policy if exists "Authenticated users can upload avatars" on storage.objects;
+create policy "Authenticated users can upload avatars" on storage.objects for insert with check (bucket_id = 'avatars' and auth.role() = 'authenticated');
 
-create policy "Authenticated users can upload avatars"
-  on storage.objects for insert
-  with check (bucket_id = 'avatars' and auth.role() = 'authenticated');
+drop policy if exists "Users can update own avatars" on storage.objects;
+create policy "Users can update own avatars" on storage.objects for update using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
 
-create policy "Users can update own avatars"
-  on storage.objects for update
-  using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+drop policy if exists "Users can view own documents storage" on storage.objects;
+create policy "Users can view own documents storage" on storage.objects for select using (bucket_id = 'documents' and auth.uid()::text = (storage.foldername(name))[1]);
 
--- Storage RLS: Documents bucket (Private medical records)
-create policy "Users can view own documents storage"
-  on storage.objects for select
-  using (bucket_id = 'documents' and auth.uid()::text = (storage.foldername(name))[1]);
+drop policy if exists "Users can upload own documents storage" on storage.objects;
+create policy "Users can upload own documents storage" on storage.objects for insert with check (bucket_id = 'documents' and auth.uid()::text = (storage.foldername(name))[1]);
 
-create policy "Users can upload own documents storage"
-  on storage.objects for insert
-  with check (bucket_id = 'documents' and auth.uid()::text = (storage.foldername(name))[1]);
-
-create policy "Users can delete own documents storage"
-  on storage.objects for delete
-  using (bucket_id = 'documents' and auth.uid()::text = (storage.foldername(name))[1]);
+drop policy if exists "Users can delete own documents storage" on storage.objects;
+create policy "Users can delete own documents storage" on storage.objects for delete using (bucket_id = 'documents' and auth.uid()::text = (storage.foldername(name))[1]);
