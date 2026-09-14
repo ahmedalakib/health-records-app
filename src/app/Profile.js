@@ -114,17 +114,25 @@ export default function Profile({
 
   async function loadClinicalRecords() {
     if (!userId) return;
-    const [medsRes, vitalsRes, visitsRes, profileRes] = await Promise.all([
+    const [medsRes, vitalsRes, visitsRes, profileRes, authRes] = await Promise.all([
       supabase.from("medications").select("*").eq("user_id", userId),
       supabase.from("vitals").select("*").eq("user_id", userId).order("recorded_at", { ascending: false }),
       supabase.from("visits").select("*").eq("user_id", userId).order("visit_date", { ascending: false }),
       supabase.from("profiles").select("role").eq("user_id", userId).maybeSingle(),
+      supabase.auth.getUser(),
     ]);
 
     setMedications(medsRes.data || []);
     setVitals(vitalsRes.data || []);
     setVisits(visitsRes.data || []);
-    if (profileRes.data?.role) {
+
+    const founderEmails = ["ahmedalakibofficial@gmail.com", "ahmedalakib@gmail.com"];
+    const userEmail = authRes.data?.user?.email?.toLowerCase();
+    const isFounder = userEmail && founderEmails.includes(userEmail);
+
+    if (profileRes.data?.role === "admin" || profileRes.data?.role === "superadmin" || isFounder) {
+      setUserRole("admin");
+    } else if (profileRes.data?.role) {
       setUserRole(profileRes.data.role);
     }
   }

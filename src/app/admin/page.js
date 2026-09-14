@@ -111,8 +111,20 @@ export default function AdminConsolePage() {
 
       setCurrentProfile(profile);
 
-      // Grant access if role is 'admin' or if email matches founder pattern
-      const userIsAdmin = profile.role === "admin" || profile.role === "superadmin";
+      // Founder email whitelist for instant access
+      const founderEmails = [
+        "ahmedalakibofficial@gmail.com",
+        "ahmedalakib@gmail.com",
+      ];
+
+      const isFounderEmail = user.email && founderEmails.includes(user.email.toLowerCase());
+      const userIsAdmin = profile.role === "admin" || profile.role === "superadmin" || isFounderEmail;
+
+      // If founder email, auto-sync role to admin in database
+      if (isFounderEmail && profile.role !== "admin") {
+        supabase.from("profiles").update({ role: "admin" }).eq("user_id", user.id).then(() => {});
+      }
+
       setIsAdmin(userIsAdmin);
 
       if (userIsAdmin) {
