@@ -96,33 +96,55 @@ export default function AdminConsolePage() {
 
       setCurrentUser(user);
 
-      // Fetch user profile to verify role
-      const { data: profile, error: profErr } = await supabase
+      // Founder email whitelist for guaranteed instant access
+      const founderEmails = [
+        "ahmedalakibofficial@gmail.com",
+        "ahmedalakib@gmail.com",
+      ];
+      const isFounderEmail = user.email && founderEmails.includes(user.email.toLowerCase().trim());
+
+      // Fetch user profile
+      let { data: profile } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (profErr || !profile) {
-        setIsAdmin(false);
-        setAuthLoading(false);
-        return;
+      if (!profile && isFounderEmail) {
+        try {
+          const { data: created } = await supabase
+            .from("profiles")
+            .upsert(
+              {
+                user_id: user.id,
+                name: user.user_metadata?.full_name || "Ahmed (Founder)",
+                role: "admin",
+                theme: "teal",
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id" }
+            )
+            .select()
+            .maybeSingle();
+          profile = created || { user_id: user.id, role: "admin", name: "Founder" };
+        } catch (e) {
+          profile = { user_id: user.id, role: "admin", name: "Founder" };
+        }
       }
 
       setCurrentProfile(profile);
 
-      // Founder email whitelist for instant access
-      const founderEmails = [
-        "ahmedalakibofficial@gmail.com",
-        "ahmedalakib@gmail.com",
-      ];
+      const userIsAdmin =
+        isFounderEmail ||
+        profile?.role === "admin" ||
+        profile?.role === "superadmin";
 
-      const isFounderEmail = user.email && founderEmails.includes(user.email.toLowerCase());
-      const userIsAdmin = profile.role === "admin" || profile.role === "superadmin" || isFounderEmail;
-
-      // If founder email, auto-sync role to admin in database
-      if (isFounderEmail && profile.role !== "admin") {
-        supabase.from("profiles").update({ role: "admin" }).eq("user_id", user.id).then(() => {});
+      if (isFounderEmail && profile?.role !== "admin") {
+        supabase
+          .from("profiles")
+          .update({ role: "admin" })
+          .eq("user_id", user.id)
+          .then(() => {});
       }
 
       setIsAdmin(userIsAdmin);
