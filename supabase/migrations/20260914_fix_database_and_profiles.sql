@@ -1,8 +1,9 @@
 -- ==============================================================================
--- SANOMED HEALTH APP - MASTER SUPABASE DATABASE SCHEMA (IDEMPOTENT)
+-- SANOMED HEALTH APP - COMPREHENSIVE DATABASE FIX & NEW USER AUTO-PROVISIONING
+-- Migration: 20260914_fix_database_and_profiles.sql
 -- ==============================================================================
 
--- 1. PROFILES TABLE
+-- 1. PROFILES TABLE - ENSURE ALL COLUMNS EXIST
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade unique not null,
@@ -19,6 +20,7 @@ create table if not exists public.profiles (
   updated_at timestamptz default now() not null
 );
 
+-- Add any missing columns to existing profiles table
 alter table public.profiles add column if not exists name text default '';
 alter table public.profiles add column if not exists blood_type text default '';
 alter table public.profiles add column if not exists allergies text default '';
@@ -81,7 +83,7 @@ create table if not exists public.visits (
 create index if not exists idx_visits_user_id on public.visits(user_id);
 create index if not exists idx_visits_visit_date on public.visits(visit_date desc);
 
--- 5. DOCUMENTS TABLE
+-- 5. DOCUMENTS TABLE - ALIGNED WITH FRONTEND SCHEMA
 create table if not exists public.documents (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
@@ -93,6 +95,7 @@ create table if not exists public.documents (
   created_at timestamptz default now() not null
 );
 
+-- Ensure required columns exist on documents
 alter table public.documents add column if not exists file_name text default 'Document';
 alter table public.documents add column if not exists file_path text default '';
 alter table public.documents add column if not exists category text default 'General';
@@ -103,7 +106,7 @@ alter table public.documents add column if not exists created_at timestamptz def
 create index if not exists idx_documents_user_id on public.documents(user_id);
 create index if not exists idx_documents_created_at on public.documents(created_at desc);
 
--- 6. APP ANNOUNCEMENTS TABLE
+-- 6. APP ANNOUNCEMENTS (FOR BROADCASTS)
 create table if not exists public.app_announcements (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -125,7 +128,7 @@ alter table public.visits enable row level security;
 alter table public.documents enable row level security;
 alter table public.app_announcements enable row level security;
 
--- POLICIES
+-- PROFILES POLICIES
 drop policy if exists "Users can view own profile" on public.profiles;
 create policy "Users can view own profile" on public.profiles for select using (auth.uid() = user_id);
 
@@ -135,6 +138,7 @@ create policy "Users can insert own profile" on public.profiles for insert with 
 drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile" on public.profiles for update using (auth.uid() = user_id);
 
+-- MEDICATIONS POLICIES
 drop policy if exists "Users can view own medications" on public.medications;
 create policy "Users can view own medications" on public.medications for select using (auth.uid() = user_id);
 
@@ -147,6 +151,7 @@ create policy "Users can update own medications" on public.medications for updat
 drop policy if exists "Users can delete own medications" on public.medications;
 create policy "Users can delete own medications" on public.medications for delete using (auth.uid() = user_id);
 
+-- VITALS POLICIES
 drop policy if exists "Users can view own vitals" on public.vitals;
 create policy "Users can view own vitals" on public.vitals for select using (auth.uid() = user_id);
 
@@ -159,6 +164,7 @@ create policy "Users can update own vitals" on public.vitals for update using (a
 drop policy if exists "Users can delete own vitals" on public.vitals;
 create policy "Users can delete own vitals" on public.vitals for delete using (auth.uid() = user_id);
 
+-- VISITS POLICIES
 drop policy if exists "Users can view own visits" on public.visits;
 create policy "Users can view own visits" on public.visits for select using (auth.uid() = user_id);
 
@@ -171,6 +177,7 @@ create policy "Users can update own visits" on public.visits for update using (a
 drop policy if exists "Users can delete own visits" on public.visits;
 create policy "Users can delete own visits" on public.visits for delete using (auth.uid() = user_id);
 
+-- DOCUMENTS POLICIES
 drop policy if exists "Users can view own documents" on public.documents;
 create policy "Users can view own documents" on public.documents for select using (auth.uid() = user_id);
 
@@ -183,6 +190,7 @@ create policy "Users can update own documents" on public.documents for update us
 drop policy if exists "Users can delete own documents" on public.documents;
 create policy "Users can delete own documents" on public.documents for delete using (auth.uid() = user_id);
 
+-- ANNOUNCEMENTS POLICIES
 drop policy if exists "Anyone can read active announcements" on public.app_announcements;
 create policy "Anyone can read active announcements" 
   on public.app_announcements 
@@ -200,7 +208,7 @@ create policy "Admins can manage announcements"
     )
   );
 
--- 8. AUTOMATIC PROFILE TRIGGER
+-- 8. BULLETPROOF AUTOMATIC PROFILE TRIGGER ON SIGNUP
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -235,6 +243,7 @@ begin
   return new;
 exception
   when others then
+    -- Never block user signup if profile trigger has a minor hiccup
     return new;
 end;
 $$;

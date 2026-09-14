@@ -57,59 +57,71 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
   }, [profile]);
 
   async function loadRecentActivity() {
-    if (!profile) return;
+    if (!profile || !profile.user_id) {
+      setLoadingActivity(false);
+      return;
+    }
     setLoadingActivity(true);
 
-    const [meds, vitals, docs, visits] = await Promise.all([
-      supabase.from("medications").select("*").eq("user_id", profile.user_id).order("created_at", { ascending: false }),
-      supabase.from("vitals").select("*").eq("user_id", profile.user_id).order("recorded_at", { ascending: false }),
-      supabase.from("documents").select("id, file_name, category, created_at").eq("user_id", profile.user_id).order("created_at", { ascending: false }).limit(4),
-      supabase.from("visits").select("id", { count: "exact", head: true }).eq("user_id", profile.user_id),
-    ]);
-
-    setAllMedications(meds.data || []);
-    setVisitsCount(visits.count || 0);
-    setVitalsCount(vitals.data?.length || 0);
-
-    if (vitals.data && vitals.data.length > 0) {
-      setLatestVital(vitals.data[0]);
-    }
-
-    // Check next upcoming appointment from localStorage
     try {
-      const savedAppts = localStorage.getItem(`healthkeep_appointments_${profile.user_id}`);
-      if (savedAppts) {
-        const appts = JSON.parse(savedAppts);
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        const upcoming = appts
-          .filter((a) => new Date(a.date) >= now)
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
-        if (upcoming.length > 0) {
-          setNextAppointment(upcoming[0]);
-        }
+      const [meds, vitals, docs, visits] = await Promise.all([
+        supabase.from("medications").select("*").eq("user_id", profile.user_id).order("created_at", { ascending: false }),
+        supabase.from("vitals").select("*").eq("user_id", profile.user_id).order("recorded_at", { ascending: false }),
+        supabase.from("documents").select("id, file_name, category, created_at").eq("user_id", profile.user_id).order("created_at", { ascending: false }).limit(4),
+        supabase.from("visits").select("id", { count: "exact", head: true }).eq("user_id", profile.user_id),
+      ]);
+
+      const medsList = meds.data || [];
+      const vitalsList = vitals.data || [];
+      const docsList = docs.data || [];
+
+      setAllMedications(medsList);
+      setVisitsCount(visits.count || 0);
+      setVitalsCount(vitalsList.length);
+
+      if (vitalsList.length > 0) {
+        setLatestVital(vitalsList[0]);
       }
-    } catch (e) {
-      console.error("Error reading upcoming appointment", e);
+
+      // Check next upcoming appointment from localStorage
+      try {
+        const savedAppts = localStorage.getItem(`healthkeep_appointments_${profile.user_id}`);
+        if (savedAppts) {
+          const appts = JSON.parse(savedAppts);
+          const now = new Date();
+          now.setHours(0, 0, 0, 0);
+          const upcoming = appts
+            .filter((a) => new Date(a.date) >= now)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+          if (upcoming.length > 0) {
+            setNextAppointment(upcoming[0]);
+          }
+        }
+      } catch (e) {
+        console.error("Error reading upcoming appointment", e);
+      }
+
+      // Check allergy conflicts across active medications
+      if (profile.allergies && medsList.length > 0) {
+        const conflicts = medsList
+          .map((m) => ({ med: m, warning: checkDrugAllergy(m.name, profile.allergies) }))
+          .filter((item) => item.warning && item.warning.hasWarning);
+        setAllergyAlerts(conflicts);
+      }
+
+      const combined = [
+        ...medsList.slice(0, 3).map((m) => ({ type: "medication", label: `${m.name} added`, sub: m.dosage || "Medication", time: m.created_at })),
+        ...vitalsList.slice(0, 3).map((v) => ({ type: "vital", label: `${v.type} recorded`, sub: v.value, time: v.created_at })),
+        ...docsList.map((d) => ({ type: "document", label: "Document uploaded", sub: d.category || d.file_name, time: d.created_at })),
+      ];
+
+      combined.sort((a, b) => new Date(b.time) - new Date(a.time));
+      setRecentActivity(combined.slice(0, 4));
+    } catch (err) {
+      console.warn("Could not load recent activity:", err);
+    } finally {
+      setLoadingActivity(false);
     }
-
-    // Check allergy conflicts across active medications
-    if (profile.allergies && meds.data) {
-      const conflicts = meds.data
-        .map((m) => ({ med: m, warning: checkDrugAllergy(m.name, profile.allergies) }))
-        .filter((item) => item.warning && item.warning.hasWarning);
-      setAllergyAlerts(conflicts);
-    }
-
-    const combined = [
-      ...(meds.data || []).slice(0, 3).map((m) => ({ type: "medication", label: `${m.name} added`, sub: m.dosage || "Medication", time: m.created_at })),
-      ...(vitals.data || []).slice(0, 3).map((v) => ({ type: "vital", label: `${v.type} recorded`, sub: v.value, time: v.created_at })),
-      ...(docs.data || []).map((d) => ({ type: "document", label: "Document uploaded", sub: d.category || d.file_name, time: d.created_at })),
-    ];
-
-    combined.sort((a, b) => new Date(b.time) - new Date(a.time));
-    setRecentActivity(combined.slice(0, 4));
-    setLoadingActivity(false);
   }
 
   // Connected Health Categories list structure (matching the Health Summary mockup)

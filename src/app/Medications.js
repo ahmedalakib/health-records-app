@@ -178,13 +178,17 @@ export default function Medications({ userId }) {
 
   async function loadProfileAllergies() {
     if (!userId) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("allergies")
-      .eq("user_id", userId)
-      .single();
-    if (data?.allergies) {
-      setUserAllergies(data.allergies);
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("allergies")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (data?.allergies) {
+        setUserAllergies(data.allergies);
+      }
+    } catch (err) {
+      console.warn("Could not fetch user allergies:", err);
     }
   }
 

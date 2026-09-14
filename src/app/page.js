@@ -38,47 +38,95 @@ export default function HomePage() {
   }, []);
 
   async function loadData() {
-    const { data: { user } } = await supabase.auth.getUser();
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (!user) {
-      router.push("/login");
-      return;
+      if (authError || !user) {
+        router.push("/login");
+        return;
+      }
+
+      // Safe lookup of profile
+      let { data: userProfile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      // If profile doesn't exist yet for new user, create it on-the-fly
+      if (!userProfile) {
+        const defaultName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          (user.email ? user.email.split("@")[0] : "Patient");
+
+        try {
+          const { data: createdProfile } = await supabase
+            .from("profiles")
+            .upsert(
+              {
+                user_id: user.id,
+                name: defaultName,
+                blood_type: "",
+                allergies: "",
+                emergency_contact: "",
+                role: "patient",
+                theme: "teal",
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id" }
+            )
+            .select()
+            .maybeSingle();
+
+          userProfile = createdProfile || {
+            user_id: user.id,
+            name: defaultName,
+            blood_type: "",
+            allergies: "",
+            emergency_contact: "",
+            role: "patient",
+          };
+        } catch (upsertErr) {
+          console.warn("Notice during profile initialization:", upsertErr);
+          userProfile = {
+            user_id: user.id,
+            name: defaultName,
+            blood_type: "",
+            allergies: "",
+            emergency_contact: "",
+            role: "patient",
+          };
+        }
+      }
+
+      const [medsRes, vitalsRes, visitsRes, docsRes] = await Promise.all([
+        supabase.from("medications").select("*").eq("user_id", user.id),
+        supabase.from("vitals").select("*").eq("user_id", user.id),
+        supabase.from("visits").select("*").eq("user_id", user.id),
+        supabase.from("documents").select("*").eq("user_id", user.id),
+      ]);
+
+      const medsList = medsRes.data || [];
+      const vitalsList = vitalsRes.data || [];
+      const visitsList = visitsRes.data || [];
+      const docsList = docsRes.data || [];
+
+      setSearchData({
+        medications: medsList,
+        vitals: vitalsList,
+        visits: visitsList,
+        documents: docsList,
+      });
+
+      setProfile(userProfile);
+      setDocCount(docsList.length);
+      setMedCount(medsList.length);
+    } catch (err) {
+      console.error("Error loading application state:", err);
+    } finally {
+      setLoading(false);
     }
-
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-
-    const { count } = await supabase
-      .from("documents")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id);
-
-    const { count: medications } = await supabase
-      .from("medications")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id);
-
-    const [medsRes, vitalsRes, visitsRes, docsRes] = await Promise.all([
-      supabase.from("medications").select("*").eq("user_id", user.id),
-      supabase.from("vitals").select("*").eq("user_id", user.id),
-      supabase.from("visits").select("*").eq("user_id", user.id),
-      supabase.from("documents").select("*").eq("user_id", user.id),
-    ]);
-
-    setSearchData({
-      medications: medsRes.data || [],
-      vitals: vitalsRes.data || [],
-      visits: visitsRes.data || [],
-      documents: docsRes.data || [],
-    });
-
-    setProfile(data);
-    setDocCount(count || 0);
-    setMedCount(medications || 0);
-    setLoading(false);
   }
 
   async function handleLogout() {
