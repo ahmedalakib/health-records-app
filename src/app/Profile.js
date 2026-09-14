@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "./lib/supabaseClient";
 import {
   ShieldAlert,
+  ShieldCheck,
   Printer,
   UserPlus,
   Users,
@@ -40,9 +42,11 @@ export default function Profile({
   onLogout,
   onProfileUpdate,
 }) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [showDoctorSummary, setShowDoctorSummary] = useState(false);
+  const [userRole, setUserRole] = useState("patient");
 
   // Core profile fields
   const [name, setName] = useState(initialName || "");
@@ -110,15 +114,19 @@ export default function Profile({
 
   async function loadClinicalRecords() {
     if (!userId) return;
-    const [medsRes, vitalsRes, visitsRes] = await Promise.all([
+    const [medsRes, vitalsRes, visitsRes, profileRes] = await Promise.all([
       supabase.from("medications").select("*").eq("user_id", userId),
       supabase.from("vitals").select("*").eq("user_id", userId).order("recorded_at", { ascending: false }),
       supabase.from("visits").select("*").eq("user_id", userId).order("visit_date", { ascending: false }),
+      supabase.from("profiles").select("role").eq("user_id", userId).maybeSingle(),
     ]);
 
     setMedications(medsRes.data || []);
     setVitals(vitalsRes.data || []);
     setVisits(visitsRes.data || []);
+    if (profileRes.data?.role) {
+      setUserRole(profileRes.data.role);
+    }
   }
 
   // Active person being viewed (either Self or a Family Member)
@@ -675,6 +683,31 @@ export default function Profile({
 
       {/* 6. App Settings, Theme Picker & Logout */}
       <section className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
+        {/* Admin Console Row (Only for Admin users) */}
+        {(userRole === "admin" || userRole === "superadmin") && (
+          <button
+            onClick={() => router.push("/admin")}
+            className="w-full flex items-center gap-3 px-4 py-3.5 border-b bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent hover:bg-amber-500/15 transition-colors text-left"
+            style={{ borderColor: "var(--color-border)" }}
+          >
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-600 shrink-0">
+              <ShieldCheck size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-900">Founder & Admin Console</span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-800 border border-amber-500/30">
+                  Admin
+                </span>
+              </div>
+              <span className="text-[10px] text-gray-500 block truncate">
+                Manage metrics, patients, broadcasts & health
+              </span>
+            </div>
+            <ChevronRight size={16} className="text-amber-600 shrink-0" />
+          </button>
+        )}
+
         {/* Theme Picker */}
         <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: "var(--color-border)" }}>
           <Palette size={18} color="var(--color-primary)" />
