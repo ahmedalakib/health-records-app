@@ -19,6 +19,7 @@ import {
   ListFilter
 } from "lucide-react";
 import VitalsChart from "./components/VitalsChart";
+import MedicalDisclaimer from "./components/MedicalDisclaimer";
 import { evaluateVital } from "./lib/healthStandards";
 
 const VITAL_CONFIGS = [
@@ -363,6 +364,14 @@ export default function Vitals({ userId }) {
             })}
           </div>
         )}
+      </div>
+
+      {/* Clinical Standards Disclaimer */}
+      <div className="mt-4">
+        <MedicalDisclaimer
+          variant="card"
+          text="Clinical evaluations (Normal, Elevated, Stage 1/2) are based on standard AHA and WHO reference guidelines for adults. Individual target ranges may vary based on your age, existing medical conditions, or pregnancy. Consult your physician to establish personalized baseline targets."
+        />
       </div>
     </section>
   );

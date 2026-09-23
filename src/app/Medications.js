@@ -20,6 +20,7 @@ import {
   BellRing
 } from "lucide-react";
 import { checkDrugAllergy, getMedicationTips } from "./lib/drugSafety";
+import MedicalDisclaimer from "./components/MedicalDisclaimer";
 
 // Convert base64 url-safe string to Uint8Array for PushManager
 function urlBase64ToUint8Array(base64String) {
@@ -126,6 +127,24 @@ export default function Medications({ userId }) {
         // Save subscription in localStorage for this user
         if (typeof window !== "undefined") {
           localStorage.setItem(`healthkeep_push_sub_${userId}`, JSON.stringify(newSubscription));
+        }
+
+        // Sync subscription to Supabase for background automated push cron
+        try {
+          const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+          await supabase.from("push_subscriptions").upsert(
+            {
+              user_id: userId,
+              endpoint: newSubscription.endpoint,
+              subscription: newSubscription.toJSON ? newSubscription.toJSON() : newSubscription,
+              timezone: userTz,
+              is_active: true,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "endpoint" }
+          );
+        } catch (cloudErr) {
+          console.warn("Notice: could not save push subscription to cloud:", cloudErr);
         }
 
         setPushSubscribed(true);
@@ -780,6 +799,14 @@ export default function Medications({ userId }) {
             </div>
           );
         })}
+      </div>
+
+      {/* Safety & Drug Interaction Disclaimer */}
+      <div className="mt-4">
+        <MedicalDisclaimer
+          variant="card"
+          text="Drug safety alerts and dosage tips are for educational reference only. Drug interaction and allergy checks are based on common clinical databases and may not cover all contraindications. Always consult your prescribing physician or pharmacist before starting, changing, or discontinuing any medication."
+        />
       </div>
     </section>
   );

@@ -29,6 +29,7 @@ import {
   HeartPulse
 } from "lucide-react";
 import DailyMedTracker from "./components/DailyMedTracker";
+import MedicalDisclaimer from "./components/MedicalDisclaimer";
 import { evaluateVital } from "./lib/healthStandards";
 import { checkDrugAllergy } from "./lib/drugSafety";
 
@@ -385,6 +386,12 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
         userId={profile.user_id}
         medications={allMedications}
         onNavigateToMeds={onNavigate}
+      />
+
+      {/* 8. Medical Safety & Clinical Disclaimer */}
+      <MedicalDisclaimer
+        variant="subtle"
+        text="Sanomed health records and safety checks are for personal reference and tracking only. Always consult your doctor or pharmacist regarding drug allergies, side effects, or changes to your prescribed treatment plan."
       />
     </div>
   );
