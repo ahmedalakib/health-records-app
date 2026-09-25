@@ -12,7 +12,7 @@ import PrescriptionUpload from "./PrescriptionUpload";
 import HomeDashboard from "./HomeDashboard";
 import GlobalSearchModal from "./components/GlobalSearchModal";
 import HealthChatbot from "./components/HealthChatbot";
-import { HeartPulse, Home, Pill, Activity, Folder, User, Stethoscope, ShieldAlert, Search } from "lucide-react";
+import { HeartPulse, Home, Pill, Activity, Folder, User, Stethoscope, ShieldAlert, Search, Sun, Moon } from "lucide-react";
 
 export default function HomePage() {
   const [profile, setProfile] = useState(null);
@@ -22,7 +22,31 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState("home");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchData, setSearchData] = useState({ medications: [], vitals: [], visits: [], documents: [] });
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    // Check initial dark mode state
+    const saved = localStorage.getItem("app-theme");
+    const dark = saved === "dark" || (!saved && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
+    setIsDarkMode(dark);
+  }, []);
+
+  function toggleDarkMode() {
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    const themeName = next ? "dark" : "azure";
+    localStorage.setItem("app-theme", themeName);
+    document.documentElement.setAttribute("data-theme", themeName);
+    if (next) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    if (profile?.user_id) {
+      supabase.from("profiles").update({ theme: themeName }).eq("user_id", profile.user_id).catch(() => {});
+    }
+  }
 
   useEffect(() => {
     loadData();
@@ -199,7 +223,21 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Quick 1-Tap Dark Mode Toggle */}
+          <button
+            onClick={toggleDarkMode}
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl flex items-center justify-center bg-slate-100/90 hover:bg-slate-200/90 text-slate-600 border border-slate-200/80 transition-all cursor-pointer shadow-2xs active:scale-90"
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            aria-label="Toggle Dark Mode"
+          >
+            {isDarkMode ? (
+              <Sun size={17} className="text-amber-400 animate-spin-slow" />
+            ) : (
+              <Moon size={17} className="text-indigo-600" />
+            )}
+          </button>
+
           {/* Quick Emergency Medical ID button with pulse beacon */}
           <button
             onClick={() => setActiveTab("profile")}
@@ -207,7 +245,8 @@ export default function HomePage() {
             title="Open Emergency Medical ID"
           >
             <ShieldAlert size={14} className="text-red-600 animate-pulse" />
-            <span>Emergency ID</span>
+            <span className="hidden sm:inline">Emergency ID</span>
+            <span className="sm:hidden">ICE</span>
           </button>
 
           {/* User Avatar */}

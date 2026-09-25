@@ -31,6 +31,7 @@ const THEMES = [
   { id: "emerald", label: "Emerald", color: "#059669" },
   { id: "indigo", label: "Indigo", color: "#4F46E5" },
   { id: "purple", label: "Purple", color: "#7C3AED" },
+  { id: "dark", label: "Midnight Dark", color: "#0F172A" },
 ];
 
 export default function Profile({
