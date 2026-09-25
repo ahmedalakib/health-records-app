@@ -156,7 +156,7 @@ export default function HomePage() {
   const isHomeGroup = activeTab === "home" || activeTab === "home-scan";
 
   return (
-    <main className="min-h-screen pb-20" style={{ backgroundColor: "var(--color-bg)" }}>
+    <main className="min-h-screen pb-28 mesh-gradient-bg">
       {/* Top nav */}
       <header
         className="glass-surface border-b px-5 py-3 flex justify-between items-center sticky top-0 z-30 shadow-xs transition-all"
@@ -191,7 +191,7 @@ export default function HomePage() {
               <span className="font-extrabold text-sm tracking-tight block leading-tight text-slate-900">
                 Sanomed
               </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             </div>
             <span className="text-[10px] text-slate-400 font-semibold block tracking-wide">
               Medical Health Hub
@@ -200,13 +200,13 @@ export default function HomePage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Quick Emergency Medical ID button */}
+          {/* Quick Emergency Medical ID button with pulse beacon */}
           <button
             onClick={() => setActiveTab("profile")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition-all cursor-pointer shadow-xs active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold text-red-700 bg-red-50/90 border border-red-200 hover:bg-red-100 transition-all cursor-pointer shadow-xs active:scale-95 animate-beacon"
             title="Open Emergency Medical ID"
           >
-            <ShieldAlert size={13} className="text-red-600 animate-pulse-subtle" />
+            <ShieldAlert size={14} className="text-red-600 animate-pulse" />
             <span>Emergency ID</span>
           </button>
 
@@ -286,11 +286,8 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Bottom nav */}
-      <nav
-        className="fixed bottom-0 left-0 right-0 glass-surface border-t flex justify-around items-center py-2 px-2 z-30 shadow-lg"
-        style={{ borderColor: "var(--color-border)" }}
-      >
+      {/* Floating Dock Bottom Navigation */}
+      <nav className="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 w-[95%] max-w-lg floating-dock rounded-2xl sm:rounded-3xl flex justify-around items-center py-2 px-2 z-40 transition-all duration-300">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = tab.id === "home" ? isHomeGroup : activeTab === tab.id;
@@ -298,19 +295,24 @@ export default function HomePage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 active:scale-95 cursor-pointer"
-              style={{
-                backgroundColor: isActive ? "var(--color-primary-light)" : "transparent",
-              }}
+              className={`flex flex-col items-center gap-1 px-3.5 py-1.5 rounded-2xl transition-all duration-200 active:scale-90 cursor-pointer relative ${
+                isActive
+                  ? "bg-sky-500/15 text-sky-700 font-bold shadow-xs"
+                  : "text-slate-400 hover:text-slate-700 hover:bg-slate-100/60"
+              }`}
             >
+              {isActive && (
+                <span className="absolute -top-0.5 w-1.5 h-1.5 rounded-full bg-sky-500" />
+              )}
               <Icon
-                size={19}
-                color={isActive ? "var(--color-primary)" : "var(--color-text-muted)"}
+                size={20}
+                className={isActive ? "text-sky-600 scale-105 transition-transform" : "text-slate-400"}
                 strokeWidth={isActive ? 2.5 : 2}
               />
               <span
-                className="text-[10px] font-semibold tracking-tight"
-                style={{ color: isActive ? "var(--color-primary-dark)" : "var(--color-text-muted)" }}
+                className={`text-[10px] tracking-tight ${
+                  isActive ? "text-sky-800 font-bold" : "text-slate-500 font-medium"
+                }`}
               >
                 {tab.label}
               </span>

@@ -125,7 +125,7 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
     }
   }
 
-  // Connected Health Categories list structure (matching the Health Summary mockup)
+  // Connected Health Categories list structure with vibrant healthcare palette
   const healthCategories = [
     {
       id: "allergies",
@@ -133,7 +133,8 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
       icon: ShieldAlert,
       count: profile?.allergies ? profile.allergies.split(",").length : 0,
       badge: profile?.allergies ? "ACTIVE" : null,
-      badgeColor: "bg-amber-100 text-amber-800 border-amber-200",
+      badgeColor: "bg-rose-50 text-rose-700 border-rose-200",
+      iconBg: "bg-rose-50 text-rose-600",
       action: () => onNavigate("profile"),
     },
     {
@@ -142,7 +143,8 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
       icon: Pill,
       count: allMedications.length,
       badge: allMedications.length > 0 ? `${allMedications.length} RX` : null,
-      badgeColor: "bg-sky-100 text-sky-800 border-sky-200",
+      badgeColor: "bg-sky-50 text-sky-700 border-sky-200",
+      iconBg: "bg-sky-50 text-sky-600",
       action: () => onNavigate("medications"),
     },
     {
@@ -151,7 +153,8 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
       icon: HeartPulse,
       count: vitalsCount,
       badge: latestVital ? `${latestVital.type}: ${latestVital.value}` : null,
-      badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      iconBg: "bg-emerald-50 text-emerald-600",
       action: () => onNavigate("vitals"),
     },
     {
@@ -160,7 +163,8 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
       icon: Stethoscope,
       count: visitsCount,
       badge: nextAppointment ? "APPT SCHEDULED" : null,
-      badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-200",
+      badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200",
+      iconBg: "bg-indigo-50 text-indigo-600",
       action: () => onNavigate("visits"),
     },
     {
@@ -169,30 +173,36 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
       icon: FileText,
       count: docCount || 0,
       badge: docCount > 0 ? `${docCount} FILES` : null,
-      badgeColor: "bg-slate-100 text-slate-700 border-slate-200",
+      badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
+      iconBg: "bg-purple-50 text-purple-600",
       action: () => onNavigate("documents"),
     },
   ];
 
   return (
     <div className="space-y-5">
-      {/* 1. Welcoming Hero Greeting Banner */}
-      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs relative overflow-hidden">
-        <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-sky-500/10 blur-2xl pointer-events-none" />
+      {/* 1. Welcoming Hero Greeting Banner with Luminous Glow */}
+      <div className="bg-gradient-to-br from-white/95 via-sky-50/40 to-indigo-50/30 backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden smooth-card">
+        {/* Ambient Gradient Orbs */}
+        <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-gradient-to-br from-sky-400/20 to-indigo-500/10 blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-emerald-400/15 blur-2xl pointer-events-none" />
 
         <div className="flex justify-between items-start relative z-10">
           <div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Cloud Sync
+              </span>
+              <span className="text-[11px] font-semibold text-slate-400">
                 {todayStr}
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
-              {greeting}, {firstName}
+              {greeting}, <span className="text-gradient-cyan">{firstName}</span>
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-              <ShieldCheck size={13} className="text-sky-600" />
+            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+              <ShieldCheck size={14} className="text-sky-600" />
               <span>Sanomed Clinical Cloud • End-to-end encrypted</span>
             </p>
           </div>
@@ -201,17 +211,46 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
             onClick={() => onNavigate("profile")}
             className="cursor-pointer group flex flex-col items-center"
           >
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center overflow-hidden ring-2 ring-sky-500/20 group-hover:ring-sky-500/40 transition-all shadow-xs bg-sky-50 text-sky-700">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden ring-2 ring-sky-500/20 group-hover:ring-sky-500/50 transition-all shadow-sm bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-base">
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-base font-bold">
-                  {firstName[0]?.toUpperCase() || "U"}
-                </span>
+                <span>{firstName[0]?.toUpperCase() || "U"}</span>
               )}
             </div>
-            <span className="text-[9px] font-semibold text-slate-400 mt-1 group-hover:text-slate-600 transition-colors">
-              Medical ID
+            <span className="text-[9px] font-bold text-slate-400 mt-1 group-hover:text-sky-600 transition-colors uppercase tracking-wider">
+              Profile
+            </span>
+          </div>
+        </div>
+
+        {/* Quick KPI Stat Strip */}
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3 mt-4 pt-4 border-t border-slate-200/60">
+          <div
+            onClick={() => onNavigate("medications")}
+            className="p-2.5 rounded-2xl bg-white/70 border border-slate-200/70 hover:bg-white hover:border-sky-300 transition-all cursor-pointer text-center group"
+          >
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Meds</span>
+            <span className="text-base sm:text-lg font-black text-slate-900 group-hover:text-sky-600 transition-colors">
+              {allMedications.length}
+            </span>
+          </div>
+          <div
+            onClick={() => onNavigate("vitals")}
+            className="p-2.5 rounded-2xl bg-white/70 border border-slate-200/70 hover:bg-white hover:border-emerald-300 transition-all cursor-pointer text-center group"
+          >
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Vitals</span>
+            <span className="text-base sm:text-lg font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
+              {vitalsCount}
+            </span>
+          </div>
+          <div
+            onClick={() => onNavigate("visits")}
+            className="p-2.5 rounded-2xl bg-white/70 border border-slate-200/70 hover:bg-white hover:border-indigo-300 transition-all cursor-pointer text-center group"
+          >
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Visits</span>
+            <span className="text-base sm:text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
+              {visitsCount}
             </span>
           </div>
         </div>
@@ -220,15 +259,72 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
       {/* 2. Global Universal Search Bar Trigger */}
       <div
         onClick={onOpenSearch}
-        className="bg-white rounded-2xl px-4 py-3 border border-slate-200 flex items-center justify-between cursor-pointer hover:border-sky-300 hover:shadow-xs transition-all shadow-2xs group"
+        className="glass-surface-subtle rounded-2xl px-4 py-3.5 border border-slate-200/80 flex items-center justify-between cursor-pointer hover:border-sky-400 hover:shadow-md transition-all shadow-xs group"
       >
-        <div className="flex items-center gap-2.5 text-xs text-slate-400">
-          <Search size={16} className="text-slate-400 group-hover:text-sky-600 transition-colors" />
-          <span className="group-hover:text-slate-600 transition-colors">Search medications, vitals, doctors, documents...</span>
+        <div className="flex items-center gap-3 text-xs text-slate-400">
+          <div className="w-7 h-7 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Search size={15} />
+          </div>
+          <span className="group-hover:text-slate-700 transition-colors font-medium">Search prescriptions, doctors, lab results...</span>
         </div>
-        <kbd className="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200">
+        <kbd className="hidden sm:inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 shadow-2xs">
           ⌘K
         </kbd>
+      </div>
+
+      {/* 3. Fast Action Quick Launch Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {[
+          {
+            label: "Scan Prescription",
+            desc: "AI OCR Parsing",
+            icon: ScanText,
+            color: "from-sky-500 to-cyan-500",
+            action: () => onNavigate("home-scan"),
+          },
+          {
+            label: "Add Medication",
+            desc: "Dose & Reminders",
+            icon: Pill,
+            color: "from-indigo-500 to-purple-500",
+            action: () => onNavigate("medications"),
+          },
+          {
+            label: "Record Vitals",
+            desc: "BP, Glucose, Pulse",
+            icon: Activity,
+            color: "from-rose-500 to-pink-500",
+            action: () => onNavigate("vitals"),
+          },
+          {
+            label: "Doctor Visit",
+            desc: "Notes & Advice",
+            icon: Stethoscope,
+            color: "from-emerald-500 to-teal-500",
+            action: () => onNavigate("visits"),
+          },
+        ].map((item, idx) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={idx}
+              onClick={item.action}
+              className="p-3.5 rounded-2xl bg-white/90 border border-slate-200/80 hover:border-slate-300 shadow-xs hover:shadow-md transition-all text-left flex flex-col justify-between group active:scale-95 cursor-pointer smooth-card"
+            >
+              <div className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${item.color} flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform mb-2.5`}>
+                <Icon size={18} />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-900 block group-hover:text-sky-700 transition-colors leading-snug">
+                  {item.label}
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                  {item.desc}
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* 3. Clinical Allergy Warning Alert Banner if Detected */}
@@ -315,11 +411,11 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
               <div
                 key={cat.id}
                 onClick={cat.action}
-                className="flex items-center justify-between p-4 hover:bg-slate-50/80 transition-all cursor-pointer group"
+                className="flex items-center justify-between p-4 hover:bg-slate-50/90 transition-all cursor-pointer group smooth-card"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-2xl bg-slate-50 text-slate-700 flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Icon size={18} className="text-slate-600 group-hover:text-sky-600 transition-colors" />
+                  <div className={`w-9 h-9 rounded-2xl ${cat.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xs`}>
+                    <Icon size={18} />
                   </div>
                   <div>
                     <h3 className="text-xs font-bold text-slate-800 group-hover:text-sky-900 transition-colors">
@@ -336,7 +432,7 @@ export default function HomeDashboard({ profile, docCount, medCount, onNavigate,
                       {cat.badge}
                     </span>
                   )}
-                  <ChevronRight size={16} className="text-slate-400 group-hover:text-slate-700 transition-colors group-hover:translate-x-0.5" />
+                  <ChevronRight size={16} className="text-slate-400 group-hover:text-slate-700 transition-colors group-hover:translate-x-1" />
                 </div>
               </div>
             );
