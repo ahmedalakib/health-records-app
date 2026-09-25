@@ -118,7 +118,7 @@ export default function Profile({
       supabase.from("medications").select("*").eq("user_id", userId),
       supabase.from("vitals").select("*").eq("user_id", userId).order("recorded_at", { ascending: false }),
       supabase.from("visits").select("*").eq("user_id", userId).order("visit_date", { ascending: false }),
-      supabase.from("profiles").select("role").eq("user_id", userId).maybeSingle(),
+      supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
       supabase.auth.getUser(),
     ]);
 
@@ -126,14 +126,23 @@ export default function Profile({
     setVitals(vitalsRes.data || []);
     setVisits(visitsRes.data || []);
 
+    const userProfile = profileRes.data;
+    if (userProfile) {
+      if (userProfile.emergency_name) setEmergencyName(userProfile.emergency_name);
+      if (userProfile.emergency_phone) setEmergencyPhone(userProfile.emergency_phone);
+      if (userProfile.emergency_relation) setEmergencyRelation(userProfile.emergency_relation);
+      if (userProfile.chronic_conditions) setConditions(userProfile.chronic_conditions);
+      if (userProfile.date_of_birth) setDob(userProfile.date_of_birth);
+    }
+
     const founderEmails = ["ahmedalakibofficial@gmail.com", "ahmedalakib@gmail.com"];
     const userEmail = authRes.data?.user?.email?.toLowerCase();
     const isFounder = userEmail && founderEmails.includes(userEmail);
 
-    if (profileRes.data?.role === "admin" || profileRes.data?.role === "superadmin" || isFounder) {
+    if (userProfile?.role === "admin" || userProfile?.role === "superadmin" || isFounder) {
       setUserRole("admin");
-    } else if (profileRes.data?.role) {
-      setUserRole(profileRes.data.role);
+    } else if (userProfile?.role) {
+      setUserRole(userProfile.role);
     }
   }
 
@@ -163,13 +172,24 @@ export default function Profile({
     setSaving(true);
 
     if (activeMemberId === "self") {
-      // Save primary user to Supabase
+      // Save primary user to Supabase Cloud Database
       await supabase
         .from("profiles")
-        .update({ name, blood_type: bloodType, allergies })
+        .update({
+          name,
+          blood_type: bloodType,
+          allergies,
+          emergency_contact: emergencyPhone ? `${emergencyName} (${emergencyRelation}): ${emergencyPhone}` : emergencyName,
+          emergency_name: emergencyName,
+          emergency_phone: emergencyPhone,
+          emergency_relation: emergencyRelation,
+          chronic_conditions: conditions,
+          date_of_birth: dob,
+          updated_at: new Date().toISOString(),
+        })
         .eq("user_id", userId);
 
-      // Save extended emergency fields to localStorage
+      // Also cache locally for offline continuity
       const emergData = {
         emergencyName,
         emergencyPhone,

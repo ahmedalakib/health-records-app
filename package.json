@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "cap:sync": "npx cap sync android"
+    "cap:sync": "npx cap sync android",
+    "cloudflare:build": "opennextjs-cloudflare build",
+    "cloudflare:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cloudflare:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",
@@ -24,9 +27,11 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.6",
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "wrangler": "^4.140.0"
   }
 }

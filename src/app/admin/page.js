@@ -30,7 +30,8 @@ import {
   Cpu,
   Clock,
   Phone,
-  Droplet
+  Droplet,
+  Bug
 } from "lucide-react";
 
 export default function AdminConsolePage() {
@@ -73,6 +74,12 @@ export default function AdminConsolePage() {
   // Diagnostics state
   const [dbLatency, setDbLatency] = useState(null);
   const [diagnosticsRunning, setDiagnosticsRunning] = useState(false);
+
+  // Bug & Fault Tracker state
+  const [appErrors, setAppErrors] = useState([]);
+  const [loadingErrors, setLoadingErrors] = useState(false);
+  const [errorFilter, setErrorFilter] = useState("all");
+  const [expandedErrorId, setExpandedErrorId] = useState(null);
 
   useEffect(() => {
     checkAdminAuth();
@@ -164,6 +171,54 @@ export default function AdminConsolePage() {
     loadMetrics();
     loadPatients();
     loadBroadcasts();
+    loadAppErrors();
+  }
+
+  async function loadAppErrors() {
+    setLoadingErrors(true);
+    try {
+      const { data, error } = await supabase
+        .from("app_errors")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(60);
+
+      if (!error && data) {
+        setAppErrors(data);
+      }
+    } catch (err) {
+      console.warn("Notice loading app_errors:", err);
+    } finally {
+      setLoadingErrors(false);
+    }
+  }
+
+  async function resolveError(id) {
+    try {
+      await supabase
+        .from("app_errors")
+        .update({
+          status: "resolved",
+          resolved_at: new Date().toISOString(),
+          resolved_by: currentUser?.id,
+        })
+        .eq("id", id);
+
+      setAppErrors((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, status: "resolved" } : e))
+      );
+    } catch (err) {
+      console.error("Failed to resolve error:", err);
+    }
+  }
+
+  async function deleteError(id) {
+    try {
+      await supabase.from("app_errors").delete().eq("id", id);
+      setAppErrors((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      console.error("Failed to delete error:", err);
+    }
   }
 
   async function loadMetrics() {
@@ -415,6 +470,12 @@ export default function AdminConsolePage() {
             { id: "patients", label: "Patient Directory", icon: Users },
             { id: "broadcasts", label: "Global Broadcasts", icon: Megaphone },
             { id: "diagnostics", label: "System Health", icon: Server },
+            {
+              id: "bugs",
+              label: "Faults & Bug Tracker",
+              icon: Bug,
+              badge: appErrors.filter((e) => e.status !== "resolved").length,
+            },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -429,7 +490,12 @@ export default function AdminConsolePage() {
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                {tab.label}
+                <span>{tab.label}</span>
+                {tab.badge > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -924,6 +990,224 @@ export default function AdminConsolePage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: FAULTS & BUG TRACKER */}
+        {activeTab === "bugs" && (
+          <div className="space-y-6">
+            {/* Header & Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Bug className="w-5 h-5 text-rose-400" />
+                  Live App Faults & Bug Tracker
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Real-time cloud error reports captured from client browsers and devices.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Filter buttons */}
+                <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+                  {[
+                    { id: "all", label: "All" },
+                    { id: "unresolved", label: "Unresolved" },
+                    { id: "critical", label: "Critical" },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setErrorFilter(f.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                        errorFilter === f.id
+                          ? "bg-slate-700 text-white shadow-xs"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={loadAppErrors}
+                  disabled={loadingErrors}
+                  className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition border border-slate-700"
+                  title="Refresh Error Logs"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingErrors ? "animate-spin" : ""}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Error KPI Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl">
+                <span className="text-xs text-slate-400">Total Logged Errors</span>
+                <div className="text-2xl font-bold text-white mt-1">{appErrors.length}</div>
+              </div>
+              <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl">
+                <span className="text-xs text-slate-400">Unresolved Issues</span>
+                <div className="text-2xl font-bold text-amber-400 mt-1">
+                  {appErrors.filter((e) => e.status !== "resolved").length}
+                </div>
+              </div>
+              <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl">
+                <span className="text-xs text-slate-400">Critical Crashes</span>
+                <div className="text-2xl font-bold text-rose-400 mt-1">
+                  {appErrors.filter((e) => e.severity === "critical").length}
+                </div>
+              </div>
+            </div>
+
+            {/* Error Feed */}
+            <div className="space-y-3">
+              {loadingErrors ? (
+                <div className="p-12 text-center text-slate-400 text-sm">
+                  <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-teal-400" />
+                  Loading error reports from Supabase Cloud...
+                </div>
+              ) : appErrors.length === 0 ? (
+                <div className="p-12 text-center bg-slate-900/40 border border-slate-800 rounded-2xl">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
+                  <h4 className="text-sm font-bold text-white">No Errors Reported Yet</h4>
+                  <p className="text-xs text-slate-400 mt-1">
+                    All client instances are executing cleanly without captured exceptions.
+                  </p>
+                </div>
+              ) : (
+                appErrors
+                  .filter((item) => {
+                    if (errorFilter === "unresolved") return item.status !== "resolved";
+                    if (errorFilter === "critical") return item.severity === "critical";
+                    return true;
+                  })
+                  .map((errItem) => {
+                    const isExpanded = expandedErrorId === errItem.id;
+                    const isResolved = errItem.status === "resolved";
+
+                    return (
+                      <div
+                        key={errItem.id}
+                        className={`p-4 rounded-2xl border transition ${
+                          isResolved
+                            ? "bg-slate-900/30 border-slate-800 opacity-60"
+                            : errItem.severity === "critical"
+                            ? "bg-rose-950/20 border-rose-900/40"
+                            : "bg-slate-900/60 border-slate-800"
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="space-y-1.5 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* Severity Badge */}
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                                  errItem.severity === "critical"
+                                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                                    : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                }`}
+                              >
+                                {errItem.severity || "error"}
+                              </span>
+
+                              {/* Route Badge */}
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                                {errItem.route || "/"}
+                              </span>
+
+                              {/* Error Type */}
+                              <span className="text-[11px] text-slate-400">
+                                {errItem.error_type}
+                              </span>
+
+                              {/* Timestamp */}
+                              <span className="text-[10px] text-slate-500">
+                                {new Date(errItem.created_at).toLocaleString()}
+                              </span>
+                            </div>
+
+                            {/* Error Message */}
+                            <h4 className="text-sm font-bold text-white font-mono break-all">
+                              {errItem.error_message}
+                            </h4>
+
+                            {errItem.user_id && (
+                              <p className="text-[11px] text-slate-400 font-mono">
+                                User UUID: {errItem.user_id}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() =>
+                                setExpandedErrorId(isExpanded ? null : errItem.id)
+                              }
+                              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
+                            >
+                              {isExpanded ? "Hide Trace" : "View Trace"}
+                            </button>
+
+                            <button
+                              onClick={() => resolveError(errItem.id)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                                isResolved
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                  : "bg-teal-500 hover:bg-teal-400 text-slate-950"
+                              }`}
+                            >
+                              {isResolved ? "Resolved ✓" : "Mark Resolved"}
+                            </button>
+
+                            <button
+                              onClick={() => deleteError(errItem.id)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 transition"
+                              title="Delete log"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Collapsible Stack Trace & Device Info */}
+                        {isExpanded && (
+                          <div className="mt-4 pt-4 border-t border-slate-800 space-y-3">
+                            {errItem.error_stack && (
+                              <div>
+                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                                  Stack Trace
+                                </span>
+                                <pre className="p-3 bg-slate-950 rounded-xl text-[11px] font-mono text-rose-300/90 overflow-x-auto whitespace-pre-wrap border border-slate-800 max-h-48 overflow-y-auto">
+                                  {errItem.error_stack}
+                                </pre>
+                              </div>
+                            )}
+
+                            <div>
+                              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                                Client Environment
+                              </span>
+                              <div className="p-3 bg-slate-950 rounded-xl text-xs text-slate-300 border border-slate-800 space-y-1">
+                                <div className="text-slate-400 break-all font-mono text-[11px]">
+                                  UA: {errItem.user_agent}
+                                </div>
+                                {errItem.device_info && (
+                                  <div className="text-slate-400 font-mono text-[11px]">
+                                    Meta: {JSON.stringify(errItem.device_info)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+              )}
             </div>
           </div>
         )}
